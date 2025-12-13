@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>攝影焦段分析儀 (V5.0 - Tab 分頁介面)</title>
+    <!-- 引入 EXIF 讀取庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/exif-js" onerror="handleScriptError()"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #181818;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 { margin-bottom: 10px; color: #fff; }
+        p { color: #888; margin-bottom: 30px; text-align: center; }
+
+        /* 拖曳區域 */
+        #drop-zone {
+            width: 80%;
+            max-width: 800px;
+            height: 150px;
+            border: 2px dashed #444;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #252526;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        
+        #drop-zone.dragover {
+            border-color: #007acc;
+            background-color: #2d2d30;
+            transform: scale(1.02);
+        }
+
+        #drop-zone.error { border-color: #d9534f; background-color: #3e2020; }
+
+        #drop-zone h3 { margin: 0; color: #aaa; }
+        #drop-zone span { font-size: 12px; color: #666; margin-top: 5px; }
+
+        /* 進度條與狀態 */
+        #status {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #007acc;
+            min-height: 24px;
+            font-weight: bold;
+        }
+        
+        /* 錯誤訊息區 */
+        #error-log {
+            width: 80%;
+            max-width: 800px;
+            color: #d9534f;
+            font-size: 12px;
+            margin-top: 10px;
+            max-height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        /* 統計結果容器 */
+        .results-container {
+            width: 100%;
+            max-width: 800px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        /* Tab 導航列 */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap; /* 讓 Tab 在小螢幕上換行 */
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+
+        .tab-button {
+            background-color: transparent;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            color: #888;
+            font-weight: 600;
+            transition: all 0.2s;
+            margin-right: 5px;
+            border-radius: 4px 4px 0 0;
+            white-space: nowrap; /* 防止 Tab 名稱換行 */
+        }
+
+        .tab-button:hover:not(.active) {
+            color: #fff;
+            background-color: #2d2d30;
+        }
+
+        .tab-button.active {
+            color: #007acc;
+            border-bottom: 3px solid #007acc;
+            background-color: #2d2d30;
+        }
+
+        /* Tab 內容區 */
+        .tab-content {
+            display: none; /* 預設隱藏所有內容 */
+            padding: 20px 0;
+            background: #252526;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .tab-content.active {
+            display: block; /* 顯示選中的內容 */
+        }
+        
+        /* 分區標題 */
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            margin: 0 20px 15px 20px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 5px;
+        }
+
+        /* 長條圖樣式 */
+        .chart-row {
+            display: flex;
+            align-items: center;
+            margin: 0 20px 10px 20px;
+            font-size: 14px;
+        }
+
+        .label {
+            width: 140px; 
+            text-align: right;
+            padding-right: 10px;
+            font-weight: bold;
+            color: #ccc;
+        }
+
+        .bar-container {
+            flex: 1;
+            background-color: #333;
+            height: 24px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar {
+            height: 100%;
+            background: linear-gradient(90deg, #007acc, #00b4cc);
+            width: 0%;
+            transition: width 1s ease-out;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* 為每個維度分配不同的配色 */
+        .focal-bar { background: linear-gradient(90deg, #007acc, #00b4cc); }
+        .aperture-bar { background: linear-gradient(90deg, #ff9900, #ffcc66); } 
+        .shutter-bar { background: linear-gradient(90deg, #28a745, #5cb85c); } 
+        .iso-bar { background: linear-gradient(90deg, #9f3e9f, #cc66cc); } 
+        .camera-bar { background: linear-gradient(90deg, #17a2b8, #58c7da); } 
+        .flash-bar { background: linear-gradient(90deg, #f0ad4e, #f8d7a3); } 
+        .wb-bar { background: linear-gradient(90deg, #66d9ef, #a6e22e); } 
+        .metering-bar { background: linear-gradient(90deg, #f92672, #ff5988); } 
+
+        /* 計數顯示在長條圖右側 */
+        .count-display {
+            width: 40px;
+            text-align: left;
+            padding-left: 10px;
+            font-weight: bold;
+            color: #00b4cc;
+            font-size: 14px;
+        }
+
+        /* 總結數據卡片 */
+        .summary-card {
+            background: #2d2d30;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            border-left: 4px solid #007acc;
+        }
+        .stat-item { text-align: center; }
+        .stat-val { font-size: 20px; font-weight: bold; color: #fff; }
+        .stat-desc { font-size: 10px; color: #888; }
+
+    </style>
+</head>
+<body>
+
+    <h1>📸 攝影參數統計分析 (V5.0)</h1>
+    <p>如果拖曳資料夾無效，這是因為瀏覽器安全限制。請務必**點擊下方的框框**，選擇 **「資料夾」** 進行匯入。</p>
+
+    <div id="drop-zone" onclick="document.getElementById('fileInput').click()">
+        <h3>📂 拖曳照片 或 點擊選擇資料夾 (最可靠)</h3>
+        <span id="drop-hint">支援 JPG / JPEG 格式</span>
+        <input type="file" id="fileInput" multiple webkitdirectory directory style="display:none">
+    </div>
+
+    <div id="status">準備就緒</div>
+    <div id="error-log"></div>
+
+    <div class="results-container" id="results">
+        <!-- 總結數據卡片 -->
+        <div class="summary-card">
+            <!-- 總計 & 曝光鐵三角 (4 欄) -->
+            <div class="stat-item">
+                <div class="stat-val" id="total-photos">0</div>
+                <div class="stat-desc">成功讀取</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="top-focal">--</div>
+                <div class="stat-desc">最愛用的焦段</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="top-aperture">--</div>
+                <div class="stat-desc">最愛用的光圈</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="top-shutter">--</div>
+                <div class="stat-desc">最愛用的快門</div>
+            </div>
+            
+            <!-- 其它進階參數 (4 欄) -->
+            <div class="stat-item">
+                <div class="stat-val" id="top-iso">--</div>
+                <div class="stat-desc">最愛用的 ISO</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="top-camera">--</div>
+                <div class="stat-desc">最愛用的機型</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="top-flash">--</div>
+                <div class="stat-desc">閃光燈使用</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" id="top-wb">--</div>
+                <div class="stat-desc">最愛用的白平衡</div>
+            </div>
+            
+            <!-- 剩下一個 (1 欄) -->
+            <div class="stat-item">
+                <div class="stat-val" id="top-metering">--</div>
+                <div class="stat-desc">最愛用的測光模式</div>
+            </div>
+        </div>
+        
+        <!-- Tab 導航列 -->
+        <div class="tabs" id="tab-navigation">
+            <button class="tab-button active" onclick="showTab('focal')">🔭 焦段</button>
+            <button class="tab-button" onclick="showTab('aperture')">💧 光圈</button>
+            <button class="tab-button" onclick="showTab('shutter')">💨 快門</button>
+            <button class="tab-button" onclick="showTab('iso')">💡 ISO</button>
+            <button class="tab-button" onclick="showTab('camera')">📷 機型</button>
+            <button class="tab-button" onclick="showTab('flash')">⚡ 閃光燈</button>
+            <button class="tab-button" onclick="showTab('wb')">☀️ 白平衡</button>
+            <button class="tab-button" onclick="showTab('metering')">🎯 測光</button>
+        </div>
+
+        <!-- Tab 內容區域 -->
+        <div id="tab-content-container">
+            <!-- 焦段統計區 -->
+            <div id="focal-tab" class="tab-content active">
+                <div class="chart-title">🔭 焦段使用頻率 (Focal Length)</div>
+                <div id="focal-chart-area"></div>
+            </div>
+            
+            <!-- 光圈統計區 -->
+            <div id="aperture-tab" class="tab-content">
+                <div class="chart-title">💧 光圈使用頻率 (Aperture / F-stop)</div>
+                <div id="aperture-chart-area"></div>
+            </div>
+
+            <!-- 快門速度統計區 -->
+            <div id="shutter-tab" class="tab-content">
+                <div class="chart-title">💨 快門速度使用頻率 (Shutter Speed)</div>
+                <div id="shutter-chart-area"></div>
+            </div>
+            
+            <!-- ISO 感光度統計區 -->
+            <div id="iso-tab" class="tab-content">
+                <div class="chart-title">💡 ISO 感光度使用頻率 (ISO)</div>
+                <div id="iso-chart-area"></div>
+            </div>
+            
+            <!-- 相機機型統計區 -->
+            <div id="camera-tab" class="tab-content">
+                <div class="chart-title">📷 相機機型使用頻率 (Camera Model)</div>
+                <div id="camera-chart-area"></div>
+            </div>
+            
+            <!-- 閃光燈使用統計區 -->
+            <div id="flash-tab" class="tab-content">
+                <div class="chart-title">⚡ 閃光燈使用頻率 (Flash Usage)</div>
+                <div id="flash-chart-area"></div>
+            </div>
+
+            <!-- 白平衡統計區 -->
+            <div id="wb-tab" class="tab-content">
+                <div class="chart-title">☀️ 白平衡使用頻率 (White Balance)</div>
+                <div id="wb-chart-area"></div>
+            </div>
+            
+            <!-- 測光模式統計區 -->
+            <div id="metering-tab" class="tab-content">
+                <div class="chart-title">🎯 測光模式使用頻率 (Metering Mode)</div>
+                <div id="metering-chart-area"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const statusDiv = document.getElementById('status');
+        const errorLog = document.getElementById('error-log');
+        const resultsDiv = document.getElementById('results');
+        const fileInput = document.getElementById('fileInput');
+
+        // Chart Area IDs
+        const chartAreas = {
+            focal: document.getElementById('focal-chart-area'),
+            aperture: document.getElementById('aperture-chart-area'),
+            shutter: document.getElementById('shutter-chart-area'),
+            iso: document.getElementById('iso-chart-area'),
+            camera: document.getElementById('camera-chart-area'),
+            flash: document.getElementById('flash-chart-area'),
+            wb: document.getElementById('wb-chart-area'),
+            metering: document.getElementById('metering-chart-area')
+        };
+        
+        // Tab Content IDs
+        const tabContents = {
+            focal: document.getElementById('focal-tab'),
+            aperture: document.getElementById('aperture-tab'),
+            shutter: document.getElementById('shutter-tab'),
+            iso: document.getElementById('iso-tab'),
+            camera: document.getElementById('camera-tab'),
+            flash: document.getElementById('flash-tab'),
+            wb: document.getElementById('wb-tab'),
+            metering: document.getElementById('metering-tab')
+        };
+
+        let focalStats = {};
+        let apertureStats = {};
+        let shutterStats = {};
+        let isoStats = {};
+        let cameraStats = {};     
+        let flashStats = {};      
+        let wbStats = {};         
+        let meteringStats = {};   
+        let validPhotos = 0;
+        let isLibraryLoaded = false;
+
+        // --- Tab 切換邏輯 (NEW) ---
+        window.showTab = function(tabId) {
+            // 隱藏所有 Tab 內容
+            Object.values(tabContents).forEach(content => content.classList.remove('active'));
+            // 顯示選定的 Tab 內容
+            tabContents[tabId].classList.add('active');
+
+            // 移除所有按鈕的 active 樣式
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            // 為選定的按鈕添加 active 樣式
+            document.querySelector(`.tab-button[onclick*='${tabId}']`).classList.add('active');
+        }
+
+        // 檢查 EXIF 庫是否載入
+        window.onload = function() {
+            if (typeof EXIF !== 'undefined') {
+                isLibraryLoaded = true;
+                statusDiv.innerText = "✅ 系統準備就緒，請拖入或點擊匯入資料夾";
+            } else {
+                handleScriptError();
+            }
+        };
+
+        function handleScriptError() {
+            statusDiv.innerText = "⚠️ 錯誤：無法載入 EXIF 分析工具";
+            statusDiv.style.color = "#d9534f";
+            dropZone.classList.add('error');
+            document.getElementById('drop-hint').innerText = "請檢查您的網路連線，或嘗試重新整理網頁。";
+        }
+
+        // --- EXIF 數值轉換函數 (未修改) ---
+        function getWhiteBalanceString(value) {
+            switch (Number(value)) {
+                case 0: return "自動白平衡 (Auto)";
+                case 1: return "手動/自訂 (Manual)";
+                case 2: return "日光 (Daylight)";
+                case 3: return "陰天 (Cloudy)";
+                case 4: return "鎢絲燈 (Tungsten)";
+                case 5: return "螢光燈 (Fluorescent)";
+                case 6: return "閃光燈 (Flash)";
+                default: return `預設值 ${value} / 未知`; 
+            }
+        }
+
+        function getMeteringModeString(value) {
+            switch (Number(value)) {
+                case 1: return "平均測光 (Average)";
+                case 2: return "中央重點 (Center-Weighted)";
+                case 3: return "點測光 (Spot)";
+                case 4: return "多區/矩陣 (Multi-Segment)";
+                case 5: return "局部測光 (Partial)";
+                case 6: return "其他 (Other)";
+                case 0: // Fall-through
+                default: return "未知/預設 (Unknown)"; 
+            }
+        }
+
+        // --- 拖曳/選擇檔案事件處理 (未修改) ---
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            if (!isLibraryLoaded) { 
+                statusDiv.innerText = "❌ 錯誤：分析工具尚未載入，請確認網路或重新整理。";
+                statusDiv.style.color = "#d9534f";
+                return; 
+            }
+
+            resetData();
+            statusDiv.innerText = "⏳ 正在掃描檔案...";
+            
+            let files = [];
+            
+            // 優先處理簡單的檔案拖曳
+            if (e.dataTransfer.files.length > 0) {
+                files = Array.from(e.dataTransfer.files).filter(file => file.name.toLowerCase().match(/\.(jpe?g)$/));
+            }
+
+            // 嘗試處理資料夾拖曳
+            if (files.length === 0 && e.dataTransfer.items) {
+                const items = e.dataTransfer.items;
+                try {
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+                        if (item) {
+                            await traverseFileTree(item, files);
+                        }
+                    }
+                } catch (err) {
+                    logError("拖曳目錄結構解析失敗，可能權限不足。");
+                    console.error("Folder scan failed:", err);
+                }
+            }
+
+            if (files.length === 0) {
+                statusDiv.innerText = "❌ 找不到 JPG 檔案。請確認資料夾內有 .jpg, .jpeg 或 .jpe 圖片。";
+                logError("❌ 嚴重限制：瀏覽器未能成功讀取資料夾內容。請改用「點擊選擇」後，一次選取所有單張照片。");
+                return;
+            }
+
+            processFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (!isLibraryLoaded) return;
+            if (e.target.files.length > 0) {
+                resetData();
+                const totalReceived = e.target.files.length;
+                
+                statusDiv.innerText = `🔍 掃描到 ${totalReceived} 個檔案... 正在過濾 JPG/JPEG/JPE`;
+
+                const files = Array.from(e.target.files).filter(file => file.name.toLowerCase().match(/\.(jpe?g)$/));
+
+                if (files.length === 0) {
+                    statusDiv.innerText = "❌ 找不到 JPG 檔案。請確認資料夾內有 .jpg, .jpeg 或 .jpe 圖片。";
+                    logError("❌ 嚴重限制：瀏覽器返回的檔案列表為空 (0 個檔案)。請改用「點擊選擇」後，一次選取所有單張照片。");
+                    return;
+                }
+
+                processFiles(files);
+            } else {
+                resetData();
+                statusDiv.innerText = "❌ 找不到 JPG 檔案。請確認資料夾內有 .jpg, .jpeg 或 .jpe 圖片。";
+                logError("❌ 嚴重限制：瀏覽器返回的檔案列表為空 (0 個檔案)。請改用「點擊選擇」後，一次選取所有單張照片。");
+            }
+        });
+
+        // --- 資料夾遞迴邏輯 (未修改) ---
+        function traverseFileTree(item, fileList) {
+            return new Promise((resolve) => {
+                if (item.isFile) {
+                    item.file((file) => {
+                        if (file.name.toLowerCase().match(/\.(jpe?g)$/)) {
+                            fileList.push(file);
+                        }
+                        resolve();
+                    }, (err) => resolve());
+                } else if (item.isDirectory) {
+                    const dirReader = item.createReader();
+                    const readEntries = () => {
+                        dirReader.readEntries(async (entries) => {
+                            if (entries.length > 0) {
+                                for (let i = 0; i < entries.length; i++) {
+                                    await traverseFileTree(entries[i], fileList);
+                                }
+                                readEntries(); 
+                            } else {
+                                resolve();
+                            }
+                        }, (err) => resolve()); 
+                    };
+                    readEntries();
+                } else {
+                    resolve();
+                }
+            });
+        }
+
+        // --- EXIF 分析 (未修改) ---
+        async function processFiles(files) {
+            statusDiv.innerText = `🔍 準備分析 ${files.length} 張照片...`;
+            
+            for (let i = 0; i < files.length; i++) {
+                await readExifSafe(files[i]);
+                if (i % 20 === 0 || i === files.length - 1) {
+                    statusDiv.innerText = `🔄 分析進度: ${i + 1} / ${files.length}`;
+                }
+            }
+
+            statusDiv.innerText = "✅ 分析完成！";
+            statusDiv.style.color = "#28a745";
+            renderCharts();
+        }
+
+        // 安全讀取 EXIF (含超時機制)
+        function readExifSafe(file) {
+            return new Promise((resolve) => {
+                let isResolved = false;
+
+                const timeout = setTimeout(() => {
+                    if (!isResolved) {
+                        isResolved = true;
+                        resolve(); 
+                    }
+                }, 1000);
+
+                try {
+                    EXIF.getData(file, function() {
+                        if (isResolved) return; 
+                        
+                        let hasData = false;
+
+                        // 1. 焦段 (Focal Length)
+                        const focalLen = EXIF.getTag(this, "FocalLength");
+                        if (focalLen) {
+                            const val = Math.round(Number(focalLen));
+                            const key = val + "mm";
+                            focalStats[key] = (focalStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+
+                        // 2. 光圈 (FNumber)
+                        const fNumber = EXIF.getTag(this, "FNumber");
+                        if (fNumber) {
+                            const aperture = Number(fNumber);
+                            const key = "f/" + aperture.toFixed(1);
+                            apertureStats[key] = (apertureStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+                        
+                        // 3. 快門速度 (ExposureTime)
+                        const expTime = EXIF.getTag(this, "ExposureTime");
+                        if (expTime) {
+                            let key;
+                            const expVal = Number(expTime);
+                            
+                            if (expVal < 1) {
+                                const denominator = Math.round(1 / expVal);
+                                key = `1/${denominator}s`;
+                            } else {
+                                key = `${expVal.toFixed(1)}s`;
+                            }
+                            shutterStats[key] = (shutterStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+
+                        // 4. ISO (ISOSpeedRatings)
+                        const iso = EXIF.getTag(this, "ISOSpeedRatings");
+                        if (iso) {
+                            const key = `ISO ${iso}`;
+                            isoStats[key] = (isoStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+                        
+                        // 5. 相機機型 (Model)
+                        const model = EXIF.getTag(this, "Model");
+                        if (model) {
+                            const key = model.trim();
+                            cameraStats[key] = (cameraStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+
+                        // 6. 閃光燈使用 (Flash)
+                        const flash = EXIF.getTag(this, "Flash");
+                        if (flash !== undefined) {
+                            let key;
+                            if (flash & 1) { 
+                                key = "閃光燈開啟 (Fired)";
+                            } else {
+                                key = "無閃光燈 (No Flash)";
+                            }
+                            flashStats[key] = (flashStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+                        
+                        // 7. 白平衡 (WhiteBalance)
+                        const wb = EXIF.getTag(this, "WhiteBalance");
+                        if (wb !== undefined) {
+                            const key = getWhiteBalanceString(wb);
+                            wbStats[key] = (wbStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+                        
+                        // 8. 測光模式 (MeteringMode)
+                        const metering = EXIF.getTag(this, "MeteringMode");
+                        if (metering !== undefined) {
+                            const key = getMeteringModeString(metering);
+                            meteringStats[key] = (meteringStats[key] || 0) + 1;
+                            hasData = true;
+                        }
+
+
+                        if (hasData) {
+                            validPhotos++;
+                        }
+                        
+                        clearTimeout(timeout);
+                        isResolved = true;
+                        resolve();
+                    });
+                } catch (e) {
+                    clearTimeout(timeout);
+                    if (!isResolved) {
+                        isResolved = true;
+                        resolve();
+                    }
+                }
+            });
+        }
+
+        function resetData() {
+            focalStats = {};
+            apertureStats = {};
+            shutterStats = {}; 
+            isoStats = {};     
+            cameraStats = {};    
+            flashStats = {};     
+            wbStats = {};         
+            meteringStats = {};   
+            validPhotos = 0;
+            resultsDiv.style.display = 'none';
+            Object.values(chartAreas).forEach(area => area.innerHTML = ''); // 清空所有圖表區
+            errorLog.innerHTML = '';
+            statusDiv.style.color = "#007acc";
+        }
+
+        function logError(msg) {
+            errorLog.innerHTML += `<div>${msg}</div>`;
+        }
+
+        // --- 繪製圖表 (已更新：繪製後預設顯示第一個 Tab) ---
+        function renderCharts() {
+            if (validPhotos === 0) {
+                statusDiv.innerText = "⚠️ 分析完成，但未讀取到任何 EXIF 資訊";
+                return;
+            }
+
+            resultsDiv.style.display = 'block';
+            document.getElementById('total-photos').innerText = validPhotos;
+
+            // 1. 焦段 (Focal)
+            const sortedFocalStats = Object.entries(focalStats).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+            let maxFocalCount = 0;
+            let topFocal = "N/A";
+            sortedFocalStats.forEach(([f, c]) => { if (c > maxFocalCount) { maxFocalCount = c; topFocal = f; } });
+            document.getElementById('top-focal').innerText = topFocal;
+            
+            // 2. 光圈 (Aperture)
+            const sortedApertureStats = Object.entries(apertureStats).sort((a, b) => parseFloat(a[0].substring(2)) - parseFloat(b[0].substring(2)));
+            let maxApertureCount = 0;
+            let topAperture = "N/A";
+            sortedApertureStats.forEach(([f, c]) => { if (c > maxApertureCount) { maxApertureCount = c; topAperture = f; } });
+            document.getElementById('top-aperture').innerText = topAperture;
+
+            // 3. 快門 (Shutter)
+            const sortedShutterStats = Object.entries(shutterStats).sort((a, b) => {
+                const valA = a[0].startsWith('1/') ? 1 / parseFloat(a[0].substring(2, a[0].length - 1)) : parseFloat(a[0]);
+                const valB = b[0].startsWith('1/') ? 1 / parseFloat(b[0].substring(2, b[0].length - 1)) : parseFloat(b[0]);
+                return valA - valB;
+            });
+            let maxShutterCount = 0;
+            let topShutter = "N/A";
+            sortedShutterStats.forEach(([f, c]) => { if (c > maxShutterCount) { maxShutterCount = c; topShutter = f; } });
+            document.getElementById('top-shutter').innerText = topShutter;
+            
+            // 4. ISO
+            const sortedISOStats = Object.entries(isoStats).sort((a, b) => parseInt(a[0].substring(4)) - parseInt(b[0].substring(4)));
+            let maxISOCount = 0;
+            let topISO = "N/A";
+            sortedISOStats.forEach(([f, c]) => { if (c > maxISOCount) { maxISOCount = c; topISO = f; } });
+            document.getElementById('top-iso').innerText = topISO;
+            
+            // 5. 相機機型 (Camera)
+            const sortedCameraStats = Object.entries(cameraStats).sort((a, b) => b[1] - a[1]); 
+            let maxCameraCount = 0;
+            let topCamera = "N/A";
+            sortedCameraStats.forEach(([f, c]) => { if (c > maxCameraCount) { maxCameraCount = c; topCamera = f; } });
+            document.getElementById('top-camera').innerText = topCamera;
+            
+            // 6. 閃光燈 (Flash)
+            const sortedFlashStats = Object.entries(flashStats).sort((a, b) => b[1] - a[1]); 
+            let maxFlashCount = 0;
+            let topFlash = "N/A";
+            sortedFlashStats.forEach(([f, c]) => { if (c > maxFlashCount) { maxFlashCount = c; topFlash = f; } });
+            document.getElementById('top-flash').innerText = topFlash;
+
+            // 7. 白平衡 (White Balance)
+            const sortedWBStats = Object.entries(wbStats).sort((a, b) => b[1] - a[1]);
+            let maxWBCount = 0;
+            let topWB = "N/A";
+            sortedWBStats.forEach(([f, c]) => { if (c > maxWBCount) { maxWBCount = c; topWB = f; } });
+            document.getElementById('top-wb').innerText = topWB;
+
+            // 8. 測光模式 (Metering Mode)
+            const sortedMeteringStats = Object.entries(meteringStats).sort((a, b) => b[1] - a[1]);
+            let maxMeteringCount = 0;
+            let topMetering = "N/A";
+            sortedMeteringStats.forEach(([f, c]) => { if (c > maxMeteringCount) { maxMeteringCount = c; topMetering = f; } });
+            document.getElementById('top-metering').innerText = topMetering;
+
+
+            // 繪製圖表
+            renderChart(sortedFocalStats, chartAreas.focal, maxFocalCount, 'focal-bar');
+            renderChart(sortedApertureStats, chartAreas.aperture, maxApertureCount, 'aperture-bar');
+            renderChart(sortedShutterStats, chartAreas.shutter, maxShutterCount, 'shutter-bar');
+            renderChart(sortedISOStats, chartAreas.iso, maxISOCount, 'iso-bar');
+            renderChart(sortedCameraStats, chartAreas.camera, maxCameraCount, 'camera-bar');
+            renderChart(sortedFlashStats, chartAreas.flash, maxFlashCount, 'flash-bar');
+            renderChart(sortedWBStats, chartAreas.wb, maxWBCount, 'wb-bar');
+            renderChart(sortedMeteringStats, chartAreas.metering, maxMeteringCount, 'metering-bar');
+            
+            // 預設顯示第一個 Tab (焦段)
+            showTab('focal');
+        }
+
+        function renderChart(sortedStats, chartArea, maxCount, barClass) {
+            chartArea.innerHTML = '';
+            
+            if (sortedStats.length === 0) {
+                chartArea.innerHTML = '<p style="color:#888; text-align: center; padding: 0 20px;">未偵測到此類型的 EXIF 資訊。</p>';
+                return;
+            }
+            
+            sortedStats.forEach(([label, count]) => {
+                const percentage = (count / maxCount) * 100; 
+                const row = document.createElement('div');
+                row.className = 'chart-row';
+                
+                let color;
+                // 根據 barClass 設置顏色以匹配長條圖的漸層
+                switch(barClass) {
+                    case 'focal-bar': color = '#00b4cc'; break;
+                    case 'aperture-bar': color = '#ff9900'; break;
+                    case 'shutter-bar': color = '#28a745'; break;
+                    case 'iso-bar': color = '#9f3e9f'; break;
+                    case 'camera-bar': color = '#17a2b8'; break;
+                    case 'flash-bar': color = '#f0ad4e'; break;
+                    case 'wb-bar': color = '#66d9ef'; break;
+                    case 'metering-bar': color = '#f92672'; break;
+                    default: color = '#00b4cc'; break;
+                }
+                
+                row.innerHTML = `
+                    <div class="label">${label}</div>
+                    <div class="bar-container">
+                        <div class="bar ${barClass}" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="count-display" style="color: ${color}">${count}</div>
+                `;
+                chartArea.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
