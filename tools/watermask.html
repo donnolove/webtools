@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>批次浮水印工具 (一鍵下載版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            max-width: 1200px;
+            margin: auto;
+            gap: 20px;
+        }
+        .controls {
+            flex: 1;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .preview-container {
+            flex: 2;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1, h2 { color: #1a73e8; }
+        .form-group { margin-bottom: 15px; }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input[type="file"], input[type="range"], select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="range"] { padding: 0; }
+        .value-display {
+            text-align: right;
+            font-size: 0.9em;
+            color: #666;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #155ab6; }
+        button:disabled { background-color: #aaa; cursor: not-allowed; }
+        #previewCanvas {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #fafafa;
+        }
+        .position-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        .position-grid button {
+            padding: 8px;
+            font-size: 0.9em;
+            background-color: #e8f0fe;
+            color: #1a73e8;
+            border: 1px solid #d2e3fc;
+        }
+        .position-grid button:hover { background-color: #d2e3fc; }
+        /* 隱藏用下載連結（保留作為觸發 click 的容器） */
+        #downloadAnchor { display: none; }
+        .hint { color:#666; font-size:0.9em; margin-top:8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <h1>批次浮水印工具</h1>
+
+        <div class="form-group">
+            <label for="originalFiles">1. 上傳原圖 (可多選)</label>
+            <input type="file" id="originalFiles" accept="image/*" multiple>
+        </div>
+
+        <div class="form-group">
+            <label for="watermarkFile">2. 上傳浮水印圖片</label>
+            <input type="file" id="watermarkFile" accept="image/*">
+        </div>
+
+        <div class="form-group">
+            <label>3. 選擇浮水印位置</label>
+            <div class="position-grid">
+                <button type="button" data-pos="tl">左上</button>
+                <button type="button" data-pos="tc">中上</button>
+                <button type="button" data-pos="tr">右上</button>
+                <button type="button" data-pos="ml">左中</button>
+                <button type="button" data-pos="mc">正中</button>
+                <button type="button" data-pos="mr">右中</button>
+                <button type="button" data-pos="bl">左下</button>
+                <button type="button" data-pos="bc">中下</button>
+                <button type="button" data-pos="br">右下</button>
+            </div>
+            <div class="hint">提示：批次輸出會「鎖定」你按下按鈕當下的浮水印位置。</div>
+        </div>
+
+        <div class="form-group">
+            <label for="watermarkSize">4. 浮水印大小 (%)</label>
+            <input type="range" id="watermarkSize" min="5" max="100" value="20">
+            <div class="value-display"><span id="watermarkSizeValue">20</span>%</div>
+        </div>
+
+        <div class="form-group">
+            <label for="watermarkOpacity">5. 透明度 (%)</label>
+            <input type="range" id="watermarkOpacity" min="0" max="100" value="80">
+            <div class="value-display"><span id="watermarkOpacityValue">80</span>%</div>
+        </div>
+
+        <div class="form-group">
+            <label for="outputFormat">6. 輸出格式</label>
+            <select id="outputFormat">
+                <option value="image/png">PNG (無損)</option>
+                <option value="image/jpeg">JPG (最高品質)</option>
+            </select>
+        </div>
+
+        <button id="processButton">開始批次處理並下載 ZIP</button>
+
+        <!-- 隱藏用：zip 生成後會自動 click 觸發下載 -->
+        <a id="downloadAnchor" href="#" download="watermarked_images.zip">download</a>
+    </div>
+
+    <div class="preview-container">
+        <h2>即時預覽</h2>
+        <p>請先上傳一張原圖與浮水印圖，並調整參數。</p>
+        <canvas id="previewCanvas"></canvas>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+    const originalFilesInput = document.getElementById('originalFiles');
+    const watermarkFileInput = document.getElementById('watermarkFile');
+    const watermarkSizeInput = document.getElementById('watermarkSize');
+    const watermarkOpacityInput = document.getElementById('watermarkOpacity');
+    const outputFormatSelect = document.getElementById('outputFormat');
+    const processButton = document.getElementById('processButton');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const pctx = previewCanvas.getContext('2d');
+    const downloadAnchor = document.getElementById('downloadAnchor');
+
+    const watermarkSizeValue = document.getElementById('watermarkSizeValue');
+    const watermarkOpacityValue = document.getElementById('watermarkOpacityValue');
+
+    let originalImage = new Image();
+    let watermarkImage = new Image();
+
+    // 預設位置 (右下)
+    let currentPosition = 'br';
+
+    // 位置按鈕事件：✅ 使用 currentTarget，避免點到文字/span 時拿不到 dataset
+    const positionButtons = document.querySelectorAll('.position-grid button');
+    positionButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            currentPosition = e.currentTarget.dataset.pos;
+            drawPreview();
+        });
+    });
+
+    // 當原圖被選擇時，用第一張來預覽
+    originalFilesInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            originalImage.src = URL.createObjectURL(file);
+            originalImage.onload = () => drawPreview();
+        }
+    });
+
+    // 當浮水印被選擇時
+    watermarkFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            watermarkImage.src = URL.createObjectURL(file);
+            watermarkImage.onload = () => drawPreview();
+        }
+    });
+
+    // 參數變動即時更新預覽
+    watermarkSizeInput.addEventListener('input', () => {
+        watermarkSizeValue.textContent = watermarkSizeInput.value;
+        drawPreview();
+    });
+
+    watermarkOpacityInput.addEventListener('input', () => {
+        watermarkOpacityValue.textContent = watermarkOpacityInput.value;
+        drawPreview();
+    });
+
+    function drawPreview() {
+        if (!originalImage.src || !watermarkImage.src) return;
+
+        const maxPreviewWidth = 700;
+        const previewScale = Math.min(1, maxPreviewWidth / originalImage.width);
+
+        previewCanvas.width = originalImage.width * previewScale;
+        previewCanvas.height = originalImage.height * previewScale;
+
+        pctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        pctx.drawImage(originalImage, 0, 0, previewCanvas.width, previewCanvas.height);
+
+        const wmScale = (watermarkSizeInput.value / 100);
+        const targetWmWidthOriginal = originalImage.width * wmScale;
+        const aspect = watermarkImage.height / watermarkImage.width;
+        const targetWmHeightOriginal = targetWmWidthOriginal * aspect;
+
+        const previewScaleFactor = previewCanvas.width / originalImage.width;
+        const scaledWmWidth = targetWmWidthOriginal * previewScaleFactor;
+        const scaledWmHeight = targetWmHeightOriginal * previewScaleFactor;
+
+        const { x, y } = calculateWatermarkPosition(
+            previewCanvas.width,
+            previewCanvas.height,
+            scaledWmWidth,
+            scaledWmHeight,
+            currentPosition
+        );
+
+        const opacity = watermarkOpacityInput.value / 100;
+        pctx.globalAlpha = opacity;
+        pctx.drawImage(watermarkImage, x, y, scaledWmWidth, scaledWmHeight);
+        pctx.globalAlpha = 1.0;
+    }
+
+    /**
+     * 一鍵批次處理並自動下載 ZIP
+     */
+    processButton.addEventListener('click', async () => {
+        const originalFiles = originalFilesInput.files;
+        if (originalFiles.length === 0 || !watermarkImage.src) {
+            alert('請先上傳原圖和浮水印！');
+            return;
+        }
+
+        const outputFormat = outputFormatSelect.value;
+        const quality = (outputFormat === 'image/jpeg') ? 1.0 : undefined;
+
+        // ✅ 鎖定本次批次輸出的位置（避免處理中 UI 變動影響結果）
+        const positionAtStart = currentPosition;
+
+        processButton.disabled = true;
+        processButton.textContent = '處理中... 生成 ZIP 後會自動下載';
+
+        const zip = new JSZip();
+
+        // Promise 化 toBlob
+        const canvasToBlob = (canvas, type, q) =>
+            new Promise(resolve => canvas.toBlob(resolve, type, q));
+
+        try {
+            const filesArr = Array.from(originalFiles);
+
+            for (const file of filesArr) {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
+
+                const processCanvas = document.createElement('canvas');
+                processCanvas.width = img.width;
+                processCanvas.height = img.height;
+                const ctx = processCanvas.getContext('2d');
+
+                // 1) 原圖
+                ctx.drawImage(img, 0, 0);
+
+                // 2) 浮水印尺寸（依原圖寬度比例）
+                const wmScale = (watermarkSizeInput.value / 100);
+                const targetWmWidth = img.width * wmScale;
+                const aspect = watermarkImage.height / watermarkImage.width;
+                const targetWmHeight = targetWmWidth * aspect;
+
+                // 3) 透明度
+                ctx.globalAlpha = watermarkOpacityInput.value / 100;
+
+                // 4) 位置（使用「鎖定」的 positionAtStart）
+                const { x, y } = calculateWatermarkPosition(
+                    processCanvas.width,
+                    processCanvas.height,
+                    targetWmWidth,
+                    targetWmHeight,
+                    positionAtStart
+                );
+
+                // 5) 畫浮水印
+                ctx.drawImage(watermarkImage, x, y, targetWmWidth, targetWmHeight);
+                ctx.globalAlpha = 1.0;
+
+                // 6) 轉 blob 丟進 zip
+                const blob = await canvasToBlob(processCanvas, outputFormat, quality);
+                const ext = (outputFormat === 'image/png') ? 'png' : 'jpg';
+                const fileName = file.name.replace(/\.[^/.]+$/, "") + `_wm.${ext}`;
+                zip.file(fileName, blob);
+
+                // 釋放 object URL
+                URL.revokeObjectURL(img.src);
+            }
+
+            // 生成 ZIP blob
+            const zipBlob = await zip.generateAsync({ type: "blob" });
+
+            // ✅ 直接觸發下載
+            const url = URL.createObjectURL(zipBlob);
+            downloadAnchor.href = url;
+            downloadAnchor.download = 'watermarked_images.zip';
+
+            // 某些瀏覽器需要把 a 放在 DOM，這裡已在 DOM（只是 display:none）
+            downloadAnchor.click();
+
+            // 下載觸發後延遲釋放 URL
+            setTimeout(() => URL.revokeObjectURL(url), 30_000);
+
+        } catch (err) {
+            console.error(err);
+            alert('處理失敗，請查看 console。');
+        } finally {
+            processButton.disabled = false;
+            processButton.textContent = '開始批次處理並下載 ZIP';
+        }
+    });
+
+    function calculateWatermarkPosition(imgWidth, imgHeight, wmWidth, wmHeight, position, padding = 20) {
+        let x, y;
+        switch (position) {
+            case 'tl':
+                x = padding; y = padding; break;
+            case 'tc':
+                x = (imgWidth / 2) - (wmWidth / 2); y = padding; break;
+            case 'tr':
+                x = imgWidth - wmWidth - padding; y = padding; break;
+            case 'ml':
+                x = padding; y = (imgHeight / 2) - (wmHeight / 2); break;
+            case 'mc':
+                x = (imgWidth / 2) - (wmWidth / 2);
+                y = (imgHeight / 2) - (wmHeight / 2);
+                break;
+            case 'mr':
+                x = imgWidth - wmWidth - padding; y = (imgHeight / 2) - (wmHeight / 2); break;
+            case 'bl':
+                x = padding; y = imgHeight - wmHeight - padding; break;
+            case 'bc':
+                x = (imgWidth / 2) - (wmWidth / 2); y = imgHeight - wmHeight - padding; break;
+            case 'br':
+            default:
+                x = imgWidth - wmWidth - padding; y = imgHeight - wmHeight - padding; break;
+        }
+        return { x, y };
+    }
+</script>
+
+</body>
+</html>
