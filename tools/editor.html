@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業版本地修圖 (RGB + HSL)</title>
+    <style>
+        /* 保持原本的專業深色風格，並優化排版 */
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #181818;
+            color: #e0e0e0;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 側邊欄：增加捲軸以容納更多功能 */
+        .sidebar {
+            width: 320px;
+            background-color: #252526;
+            padding: 20px;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto; /* 允許垂直捲動 */
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+        }
+
+        /* 美化捲軸 */
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .sidebar::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        h2 { margin: 10px 0 5px 0; font-size: 16px; color: #fff; border-bottom: 1px solid #444; padding-bottom: 5px; }
+        h3 { margin: 0; font-size: 14px; color: #007acc; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* 控制項群組 */
+        .control-group {
+            background: #2d2d30;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        label { display: flex; justify-content: space-between; font-size: 13px; color: #ccc; margin-bottom: 5px; }
+        
+        /* 數值顯示 */
+        .value-display { color: #4ec9b0; font-family: monospace; }
+
+        /* 按鈕樣式 */
+        .btn { padding: 10px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-bottom: 5px; transition: 0.2s; }
+        .btn-primary { background-color: #007acc; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-reset { background-color: #d9534f; color: white; font-size: 12px; padding: 5px; }
+        .btn:hover { opacity: 0.9; }
+        
+        input[type=file] { display: none; }
+
+        /* 滑桿美化 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #444;
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #007acc;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: .15s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* RGB 滑桿特製顏色 */
+        #channel-r::-webkit-slider-thumb { background: #ff4d4d; }
+        #channel-g::-webkit-slider-thumb { background: #2ecc71; }
+        #channel-b::-webkit-slider-thumb { background: #3498db; }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1e1e1e;
+            background-image: 
+                linear-gradient(45deg, #252526 25%, transparent 25%), 
+                linear-gradient(-45deg, #252526 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #252526 75%), 
+                linear-gradient(-45deg, transparent 75%, #252526 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        canvas { box-shadow: 0 0 30px rgba(0,0,0,0.7); max-width: 95%; max-height: 95%; }
+    </style>
+</head>
+<body>
+
+    <svg style="display: none;">
+        <defs>
+            <filter id="rgbFilter">
+                <feColorMatrix type="matrix" 
+                    id="colorMatrix"
+                    values="1 0 0 0 0
+                            0 1 0 0 0
+                            0 0 1 0 0
+                            0 0 0 1 0" />
+            </filter>
+        </defs>
+    </svg>
+
+    <div class="sidebar">
+        <h2 style="border:none; font-size: 20px;">🎨 Pro Editor</h2>
+        
+        <div class="control-group">
+            <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📂 匯入圖片</button>
+            <input type="file" id="fileInput" accept="image/*">
+            <button class="btn btn-success" onclick="downloadImage()">💾 下載 JPG</button>
+        </div>
+
+        <h2>RGB 通道 (色彩平衡)</h2>
+        <div class="control-group">
+            <label>🔴 紅色 (Red) <span id="val-r" class="value-display">1.0</span></label>
+            <input type="range" id="channel-r" min="0" max="2" step="0.05" value="1">
+            
+            <label>🟢 綠色 (Green) <span id="val-g" class="value-display">1.0</span></label>
+            <input type="range" id="channel-g" min="0" max="2" step="0.05" value="1">
+            
+            <label>🔵 藍色 (Blue) <span id="val-b" class="value-display">1.0</span></label>
+            <input type="range" id="channel-b" min="0" max="2" step="0.05" value="1">
+        </div>
+
+        <h2>HSL 與 光影</h2>
+        <div class="control-group">
+            <label>🌈 色相 (Hue) <span id="val-hue" class="value-display">0</span></label>
+            <input type="range" id="hue" min="0" max="360" value="0">
+
+            <label>🎨 飽和度 (Saturate) <span id="val-sat" class="value-display">100</span></label>
+            <input type="range" id="saturate" min="0" max="200" value="100">
+
+            <label>☀️ 亮度 (Lightness) <span id="val-bri" class="value-display">100</span></label>
+            <input type="range" id="brightness" min="0" max="200" value="100">
+
+            <label>🌗 對比度 (Contrast) <span id="val-con" class="value-display">100</span></label>
+            <input type="range" id="contrast" min="0" max="200" value="100">
+        </div>
+
+        <h2>其他效果</h2>
+        <div class="control-group">
+            <label>📜 復古 (Sepia) <span id="val-sep" class="value-display">0</span></label>
+            <input type="range" id="sepia" min="0" max="100" value="0">
+            
+            <label>🌫️ 模糊 (Blur) <span id="val-blur" class="value-display">0</span></label>
+            <input type="range" id="blur" min="0" max="10" step="0.5" value="0">
+        </div>
+
+        <button class="btn btn-reset" onclick="resetAll()">↺ 全部重置</button>
+    </div>
+
+    <div class="workspace">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const svgMatrix = document.getElementById('colorMatrix');
+
+        // 定義所有參數的初始值
+        const defaults = {
+            r: 1, g: 1, b: 1,
+            hue: 0, saturate: 100, brightness: 100, contrast: 100,
+            sepia: 0, blur: 0
+        };
+
+        // 狀態物件
+        let settings = { ...defaults };
+        let originalImage = new Image();
+        let isLoaded = false;
+
+        // 綁定輸入事件
+        const bindSlider = (id, key, unit = '') => {
+            const el = document.getElementById(id);
+            const valEl = document.getElementById('val-' + id.split('-').pop().slice(0, 3)); // 自動對應 ID
+            
+            el.addEventListener('input', (e) => {
+                settings[key] = parseFloat(e.target.value);
+                if(valEl) valEl.innerText = settings[key] + unit;
+                render();
+            });
+        };
+
+        // 綁定所有滑桿
+        bindSlider('channel-r', 'r');
+        bindSlider('channel-g', 'g');
+        bindSlider('channel-b', 'b');
+        bindSlider('hue', 'hue', '°');
+        bindSlider('saturate', 'saturate', '%');
+        bindSlider('brightness', 'brightness', '%');
+        bindSlider('contrast', 'contrast', '%');
+        bindSlider('sepia', 'sepia', '%');
+        bindSlider('blur', 'blur', 'px');
+
+        // 圖片匯入
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    // 為了效能，如果圖片太大可以鎖定顯示大小，但這裡為了畫質保留原尺寸
+                    canvas.width = originalImage.width;
+                    canvas.height = originalImage.height;
+                    
+                    // 如果圖片太大，讓 canvas 在 CSS 上縮放適應螢幕，但實際像素不變
+                    isLoaded = true;
+                    render();
+                };
+                originalImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 核心渲染引擎
+        function render() {
+            if (!isLoaded) return;
+
+            // 1. 設定 SVG Color Matrix (處理 RGB 通道)
+            // 矩陣邏輯：[R 0 0 0 0, 0 G 0 0 0, 0 0 B 0 0, 0 0 0 1 0]
+            // 這裡直接修改 SVG DOM 的屬性
+            const matrixValues = `
+                ${settings.r} 0 0 0 0
+                0 ${settings.g} 0 0 0
+                0 0 ${settings.b} 0 0
+                0 0 0 1 0
+            `;
+            svgMatrix.setAttribute('values', matrixValues);
+
+            // 2. 設定 Canvas Filter 字串 (處理 HSL 和其他)
+            // 注意：這裡結合了 url(#rgbFilter) 也就是上面定義的 SVG
+            const filterString = `
+                url(#rgbFilter)
+                hue-rotate(${settings.hue}deg)
+                saturate(${settings.saturate}%)
+                brightness(${settings.brightness}%)
+                contrast(${settings.contrast}%)
+                sepia(${settings.sepia}%)
+                blur(${settings.blur}px)
+            `;
+
+            ctx.filter = filterString.trim();
+
+            // 3. 繪製
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height);
+        }
+
+        function resetAll() {
+            settings = { ...defaults };
+            
+            // 重置 UI
+            document.getElementById('channel-r').value = 1;
+            document.getElementById('channel-g').value = 1;
+            document.getElementById('channel-b').value = 1;
+            document.getElementById('hue').value = 0;
+            document.getElementById('saturate').value = 100;
+            document.getElementById('brightness').value = 100;
+            document.getElementById('contrast').value = 100;
+            document.getElementById('sepia').value = 0;
+            document.getElementById('blur').value = 0;
+
+            // 重置數值顯示
+            document.querySelectorAll('.value-display').forEach(el => {
+                if(el.id.includes('r') || el.id.includes('g') || el.id.includes('b')) el.innerText = "1.0";
+                else if(el.id.includes('hue')) el.innerText = "0°";
+                else if(el.id.includes('blur')) el.innerText = "0px";
+                else el.innerText = "100%";
+            });
+            
+            // 特殊處理 sepia 預設 0
+            document.getElementById('val-sep').innerText = "0%";
+            document.getElementById('val-blur').innerText = "0px";
+            document.getElementById('val-hue').innerText = "0°";
+
+            render();
+        }
+
+        function downloadImage() {
+            if (!isLoaded) { alert("請先匯入圖片！"); return; }
+            const link = document.createElement('a');
+            link.download = 'edited-pro.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.92);
+            link.click();
+        }
+
+        // 初始畫面
+        ctx.font = "bold 24px 'Segoe UI'";
+        ctx.fillStyle = "#555";
+        ctx.textAlign = "center";
+        ctx.fillText("請點擊左側「匯入圖片」開始編輯", canvas.width/2, canvas.height/2);
+
+    </script>
+</body>
+</html>
