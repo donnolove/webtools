@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Photo Frame Maker</title>
+  <style>
+    @font-face {
+      font-family: "Bundled Noto Sans TC";
+      src: url("./fonts/NotoSansTC-VF.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Bundled Noto Serif TC";
+      src: url("./fonts/NotoSerifTC-VF.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #111111;
+      --panel: #1a1a1a;
+      --panel-2: #202020;
+      --text: #f5f5f5;
+      --muted: #b8b8b8;
+      --line: rgba(255,255,255,0.12);
+      --accent: #ffffff;
+      --shadow: 0 20px 50px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Microsoft JhengHei UI", "PingFang TC", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,0.05), transparent 32%),
+        linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      padding: 28px;
+      border-right: 1px solid var(--line);
+      background: rgba(17,17,17,0.84);
+      backdrop-filter: blur(14px);
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      font-size: 11px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .lead {
+      margin: 0 0 26px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .group {
+      margin-bottom: 22px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .group:last-of-type {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .group h2 {
+      margin: 0 0 12px;
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .field,
+    .row-2 {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: #ebebeb;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin-top: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font: inherit;
+      outline: none;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #ffffff;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      font: inherit;
+      color: var(--muted);
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 4px;
+      font-size: 14px;
+    }
+
+    .toggle input {
+      width: 18px;
+      height: 18px;
+      accent-color: #ffffff;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .primary {
+      background: #ffffff;
+      color: #111111;
+      font-weight: 600;
+    }
+
+    .ghost {
+      background: rgba(255,255,255,0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .workspace {
+      padding: 32px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .statusbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .stage {
+      min-height: 540px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
+        #161616;
+      box-shadow: var(--shadow);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      padding: 28px;
+      position: relative;
+    }
+
+    .placeholder {
+      max-width: 500px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+      background: #ffffff;
+    }
+
+    .dropzone {
+      position: absolute;
+      inset: 28px;
+      display: grid;
+      place-items: center;
+      border: 2px dashed rgba(255,255,255,0.16);
+      transition: background 0.18s ease, border-color 0.18s ease;
+      pointer-events: none;
+    }
+
+    .dropzone.active {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .meta-item {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .meta-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .meta-item strong {
+      display: block;
+      word-break: break-word;
+      font-size: 14px;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      margin: 10px 0 14px;
+    }
+
+    .check-grid label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--line); }
+      .workspace { padding: 20px; }
+      .meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="eyebrow">Photo utility</div>
+      <h1>Photo Frame Maker</h1>
+      <p class="lead">替照片加上黑白邊框，並可選擇在底部加入拍攝資訊，最後匯出成新的 JPG 圖片。</p>
+
+      <div class="group">
+        <h2>照片</h2>
+        <div class="field">
+          <label>
+            載入照片
+            <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" />
+          </label>
+        </div>
+        <div class="hint">可直接拖拉照片到右側預覽區。建議使用原始 JPEG，可較完整讀取 EXIF。若 EXIF 缺失，也可以手動修改底部欄位。</div>
+      </div>
+
+      <div class="group">
+        <h2>邊框設定</h2>
+        <div class="row-2">
+          <label>
+            邊框顏色
+            <select id="frameColor">
+              <option value="white">白色</option>
+              <option value="black">黑色</option>
+            </select>
+          </label>
+          <label>
+            匯出格式
+            <select id="exportFormat">
+              <option value="image/jpeg">JPG</option>
+              <option value="image/png">PNG</option>
+            </select>
+          </label>
+        </div>
+        <div class="row-2">
+          <label>
+            上邊框：<strong id="topPaddingValue">130</strong> px
+            <input id="topPadding" type="range" min="0" max="400" value="130" />
+          </label>
+          <label>
+            下邊框：<strong id="bottomPaddingValue">40</strong> px
+            <input id="bottomPadding" type="range" min="0" max="400" value="40" />
+          </label>
+        </div>
+        <div class="row-2">
+          <label>
+            左邊框：<strong id="leftPaddingValue">130</strong> px
+            <input id="leftPadding" type="range" min="0" max="400" value="130" />
+          </label>
+          <label>
+            右邊框：<strong id="rightPaddingValue">130</strong> px
+            <input id="rightPadding" type="range" min="0" max="400" value="130" />
+          </label>
+        </div>
+        <label>
+          底部資訊區額外高度：<strong id="infoHeightValue">190</strong> px
+          <input id="infoHeight" type="range" min="0" max="420" value="190" />
+        </label>
+      </div>
+
+      <div class="group">
+        <h2>資訊列</h2>
+        <label class="toggle"><input id="showInfo" type="checkbox" checked /> 顯示底部照片資訊</label>
+        <label>
+          排版樣式
+          <select id="infoLayout">
+            <option value="classic">Classic：左規格 / 中品牌 / 右機身</option>
+            <option value="split">Split：左品牌機型 / 右拍攝規格</option>
+            <option value="stacked">Stacked：中央雙行排版</option>
+            <option value="minimal">Minimal：單行極簡排版</option>
+          </select>
+        </label>
+        <label>
+          字體
+          <select id="fontFamily">
+            <option value="&quot;Courier New&quot;, monospace" selected>Courier New</option>
+            <option value="&quot;Bundled Noto Sans TC&quot;, &quot;Noto Sans TC&quot;, sans-serif">Bundled Noto Sans TC</option>
+            <option value="&quot;Bundled Noto Serif TC&quot;, &quot;Noto Serif TC&quot;, serif">Bundled Noto Serif TC</option>
+            <option value="&quot;Segoe UI&quot;, &quot;Microsoft JhengHei UI&quot;, sans-serif">Segoe UI / 微軟正黑體</option>
+            <option value="&quot;Microsoft JhengHei UI&quot;, &quot;PingFang TC&quot;, sans-serif">微軟正黑體</option>
+            <option value="Arial, Helvetica, sans-serif">Arial</option>
+            <option value="Georgia, &quot;Times New Roman&quot;, serif">Georgia</option>
+            <option value="&quot;Times New Roman&quot;, serif">Times New Roman</option>
+          </select>
+        </label>
+        <div class="check-grid">
+          <label><input id="showMake" type="checkbox" checked /> 顯示廠牌</label>
+          <label><input id="showModel" type="checkbox" checked /> 顯示型號</label>
+          <label><input id="showISO" type="checkbox" checked /> 顯示 ISO</label>
+          <label><input id="showFocal" type="checkbox" checked /> 顯示焦段</label>
+          <label><input id="showAperture" type="checkbox" checked /> 顯示光圈</label>
+          <label><input id="showShutter" type="checkbox" checked /> 顯示快門</label>
+        </div>
+        <div class="row-2">
+          <label>
+            廠牌
+            <input id="makeField" type="text" value="" placeholder="RICOH IMAGING COMPANY, LTD." />
+          </label>
+          <label>
+            型號
+            <input id="modelField" type="text" value="" placeholder="RICOH GR III" />
+          </label>
+        </div>
+        <div class="row-2">
+          <label>
+            ISO
+            <input id="isoField" type="text" value="" placeholder="200" />
+          </label>
+          <label>
+            焦段
+            <input id="focalField" type="text" value="" placeholder="28mm" />
+          </label>
+        </div>
+        <div class="row-2">
+          <label>
+            光圈
+            <input id="apertureField" type="text" value="" placeholder="F2.8" />
+          </label>
+          <label>
+            快門
+            <input id="shutterField" type="text" value="" placeholder="1/400s" />
+          </label>
+        </div>
+        <div class="hint">若照片內有 EXIF，系統會自動填入；你也可以自由改成自己想要的格式。</div>
+      </div>
+
+      <div class="group">
+        <h2>操作</h2>
+        <div class="actions">
+          <button id="downloadBtn" class="primary" disabled>下載成品</button>
+          <button id="resetBtn" class="ghost" type="button">重設欄位</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <div class="statusbar">
+        <div class="badge">預覽會依照設定即時更新</div>
+        <div id="imageStatus">尚未載入照片</div>
+      </div>
+
+      <section class="stage">
+        <div id="placeholder" class="placeholder">
+          <h2>先載入一張照片</h2>
+          <p>支援 JPEG / PNG / WebP。載入後會嘗試讀取 EXIF，並依你的設定即時產生邊框與資訊列預覽。</p>
+        </div>
+        <div id="dropzone" class="dropzone"><strong>拖拉照片到這裡</strong></div>
+        <canvas id="canvas" hidden></canvas>
+      </section>
+
+      <section class="meta">
+        <div class="meta-item">
+          <span>相機廠牌 / 機型</span>
+          <strong id="cameraMeta">尚未讀取</strong>
+        </div>
+        <div class="meta-item">
+          <span>曝光資訊</span>
+          <strong id="exposureMeta">尚未讀取</strong>
+        </div>
+        <div class="meta-item">
+          <span>輸出尺寸</span>
+          <strong id="outputMeta">尚未產生</strong>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      image: null,
+      imageName: "",
+      objectUrl: "",
+      exif: {},
+      defaults: {
+        leftInfo: "",
+        brandInfo: "",
+        rightInfo: ""
+      }
+    };
+
+    const fileInput = document.getElementById("fileInput");
+    const frameColor = document.getElementById("frameColor");
+    const exportFormat = document.getElementById("exportFormat");
+    const topPadding = document.getElementById("topPadding");
+    const rightPadding = document.getElementById("rightPadding");
+    const bottomPadding = document.getElementById("bottomPadding");
+    const leftPadding = document.getElementById("leftPadding");
+    const infoHeight = document.getElementById("infoHeight");
+    const showInfo = document.getElementById("showInfo");
+    const infoLayout = document.getElementById("infoLayout");
+    const fontFamily = document.getElementById("fontFamily");
+    const showMake = document.getElementById("showMake");
+    const showModel = document.getElementById("showModel");
+    const showISO = document.getElementById("showISO");
+    const showFocal = document.getElementById("showFocal");
+    const showAperture = document.getElementById("showAperture");
+    const showShutter = document.getElementById("showShutter");
+    const makeField = document.getElementById("makeField");
+    const modelField = document.getElementById("modelField");
+    const isoField = document.getElementById("isoField");
+    const focalField = document.getElementById("focalField");
+    const apertureField = document.getElementById("apertureField");
+    const shutterField = document.getElementById("shutterField");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const placeholder = document.getElementById("placeholder");
+    const dropzone = document.getElementById("dropzone");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const topPaddingValue = document.getElementById("topPaddingValue");
+    const rightPaddingValue = document.getElementById("rightPaddingValue");
+    const bottomPaddingValue = document.getElementById("bottomPaddingValue");
+    const leftPaddingValue = document.getElementById("leftPaddingValue");
+    const infoHeightValue = document.getElementById("infoHeightValue");
+    const imageStatus = document.getElementById("imageStatus");
+    const cameraMeta = document.getElementById("cameraMeta");
+    const exposureMeta = document.getElementById("exposureMeta");
+    const outputMeta = document.getElementById("outputMeta");
+
+    function updateRangeLabels() {
+      topPaddingValue.textContent = topPadding.value;
+      rightPaddingValue.textContent = rightPadding.value;
+      bottomPaddingValue.textContent = bottomPadding.value;
+      leftPaddingValue.textContent = leftPadding.value;
+      infoHeightValue.textContent = infoHeight.value;
+    }
+
+    function getFrameBackground() {
+      return frameColor.value === "black" ? "#000000" : "#ffffff";
+    }
+
+    function getTextColor() {
+      return frameColor.value === "black" ? "#ffffff" : "#111111";
+    }
+
+    function escapeFilename(name) {
+      return name.replace(/\.[^.]+$/, "").replace(/[^\w\u4e00-\u9fff-]+/g, "_");
+    }
+
+    function formatExposureTime(value) {
+      if (!value) return "";
+      if (typeof value === "number") {
+        return value >= 1 ? `${value}s` : `1/${Math.round(1 / value)}s`;
+      }
+      const ratio = String(value).split("/");
+      if (ratio.length === 2) {
+        const n = Number(ratio[0]);
+        const d = Number(ratio[1]);
+        if (n && d) {
+          const seconds = n / d;
+          return seconds >= 1 ? `${seconds}s` : `1/${Math.round(d / n)}s`;
+        }
+      }
+      return String(value);
+    }
+
+    function formatFNumber(value) {
+      if (!value) return "";
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        return `F${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}`;
+      }
+      return String(value).startsWith("F") ? String(value) : `F${value}`;
+    }
+
+    function formatFocalLength(value, model) {
+      if (!value) return "";
+      const num = Number(value);
+      const focal = Number.isFinite(num)
+        ? `${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}mm`
+        : String(value);
+      if (model && /GR III/i.test(model) && /^18(\.3)?mm$/i.test(focal)) {
+        return "28mm";
+      }
+      return focal;
+    }
+
+    function updateMetaPanel(outputWidth, outputHeight) {
+      const make = state.exif.Make || "";
+      const model = state.exif.Model || "";
+      cameraMeta.textContent = [make, model].filter(Boolean).join(" / ") || "未提供";
+
+      const exposurePieces = [
+        state.exif.ISO ? `ISO ${state.exif.ISO}` : "",
+        formatFocalLength(state.exif.FocalLength, state.exif.Model),
+        formatFNumber(state.exif.FNumber),
+        formatExposureTime(state.exif.ExposureTime)
+      ].filter(Boolean);
+      exposureMeta.textContent = exposurePieces.join(" · ") || "未提供";
+      outputMeta.textContent = outputWidth && outputHeight ? `${outputWidth} × ${outputHeight}` : "尚未產生";
+    }
+
+    function deriveDefaultTexts() {
+      const make = state.exif.Make || "";
+      const model = state.exif.Model || "";
+      const iso = state.exif.ISO ? String(state.exif.ISO) : "";
+      const focal = formatFocalLength(state.exif.FocalLength, state.exif.Model);
+      const fNumber = formatFNumber(state.exif.FNumber);
+      const exposure = formatExposureTime(state.exif.ExposureTime);
+
+      state.defaults.make = make;
+      state.defaults.model = model;
+      state.defaults.iso = iso;
+      state.defaults.focal = focal;
+      state.defaults.aperture = fNumber;
+      state.defaults.shutter = exposure;
+
+      makeField.value = state.defaults.make;
+      modelField.value = state.defaults.model;
+      isoField.value = state.defaults.iso;
+      focalField.value = state.defaults.focal;
+      apertureField.value = state.defaults.aperture;
+      shutterField.value = state.defaults.shutter;
+    }
+
+    function getVisibleFields() {
+      const make = showMake.checked ? makeField.value.trim() : "";
+      const model = showModel.checked ? modelField.value.trim() : "";
+      const iso = showISO.checked && isoField.value.trim() ? `ISO${isoField.value.trim().replace(/^ISO/i, "")}` : "";
+      const focal = showFocal.checked ? focalField.value.trim() : "";
+      const aperture = showAperture.checked ? apertureField.value.trim() : "";
+      const shutter = showShutter.checked ? shutterField.value.trim() : "";
+      const brand = make ? make.split(/\s+/)[0].toUpperCase() : "";
+      const specLine = [iso, focal, aperture, shutter].filter(Boolean).join(" ");
+      const makeModel = [make, model].filter(Boolean).join("  ");
+      const shortMakeModel = [brand, model].filter(Boolean).join("  ");
+      return { make, model, iso, focal, aperture, shutter, brand, specLine, makeModel, shortMakeModel };
+    }
+
+    function fitText(text, maxWidth, fontSize, family, weight = 500) {
+      if (!text) return `${weight} ${fontSize}px ${family}`;
+      let size = fontSize;
+      while (size > 10) {
+        ctx.font = `${weight} ${size}px ${family}`;
+        if (ctx.measureText(text).width <= maxWidth) break;
+        size -= 1;
+      }
+      return `${weight} ${size}px ${family}`;
+    }
+
+    function drawPreview() {
+      if (!state.image) {
+        canvas.hidden = true;
+        placeholder.hidden = false;
+        dropzone.hidden = false;
+        updateMetaPanel();
+        return;
+      }
+
+      const paddingTop = Number(topPadding.value);
+      const paddingRight = Number(rightPadding.value);
+      const paddingBottom = Number(bottomPadding.value);
+      const paddingLeft = Number(leftPadding.value);
+      const infoEnabled = showInfo.checked;
+      const extraInfoHeight = infoEnabled ? Number(infoHeight.value) : 0;
+      const outputWidth = state.image.width + paddingLeft + paddingRight;
+      const outputHeight = state.image.height + paddingTop + paddingBottom + extraInfoHeight;
+
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+
+      const bg = getFrameBackground();
+      const fg = getTextColor();
+      const selectedFont = fontFamily.value;
+
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, outputWidth, outputHeight);
+      ctx.drawImage(state.image, paddingLeft, paddingTop, state.image.width, state.image.height);
+
+      if (infoEnabled && extraInfoHeight > 0) {
+        const infoTop = paddingTop + state.image.height + paddingBottom;
+        const leftX = Math.max(24, paddingLeft * 0.5);
+        const rightX = outputWidth - Math.max(24, paddingRight * 0.5);
+        const centerX = outputWidth / 2;
+        const textY = infoTop + extraInfoHeight * 0.5;
+        const dividerTop = infoTop + extraInfoHeight * 0.2;
+        const dividerBottom = infoTop + extraInfoHeight * 0.8;
+
+        ctx.fillStyle = fg;
+        ctx.textBaseline = "middle";
+
+        const fields = getVisibleFields();
+        const layout = infoLayout.value;
+        const smallFontSize = Math.max(18, Math.round(outputWidth * 0.019));
+        const brandFontSize = Math.max(24, Math.round(outputWidth * 0.031));
+        const rightFontSize = Math.max(16, Math.round(outputWidth * 0.016));
+
+        if (layout === "classic") {
+          ctx.font = fitText(fields.specLine, outputWidth * 0.28, smallFontSize, selectedFont, 500);
+          ctx.textAlign = "left";
+          ctx.fillText(fields.specLine, leftX, textY);
+
+          if (fields.brand) {
+            ctx.font = fitText(fields.brand, outputWidth * 0.18, brandFontSize, selectedFont, 700);
+            ctx.textAlign = "center";
+            ctx.fillText(fields.brand, centerX, textY + 2);
+          }
+
+          if (fields.brand && fields.makeModel) {
+            const dividerX = centerX + Math.max(80, outputWidth * 0.09);
+            ctx.strokeStyle = frameColor.value === "black" ? "rgba(255,255,255,0.45)" : "rgba(17,17,17,0.25)";
+            ctx.lineWidth = Math.max(1.5, outputWidth * 0.001);
+            ctx.beginPath();
+            ctx.moveTo(dividerX, dividerTop);
+            ctx.lineTo(dividerX, dividerBottom);
+            ctx.stroke();
+          }
+
+          ctx.font = fitText(fields.makeModel, outputWidth * 0.34, rightFontSize, selectedFont, 500);
+          ctx.textAlign = "right";
+          ctx.fillText(fields.makeModel, rightX, textY);
+        } else if (layout === "split") {
+          ctx.font = fitText(fields.shortMakeModel, outputWidth * 0.42, brandFontSize, selectedFont, 700);
+          ctx.textAlign = "left";
+          ctx.fillText(fields.shortMakeModel, leftX, textY);
+
+          ctx.font = fitText(fields.specLine, outputWidth * 0.4, smallFontSize, selectedFont, 500);
+          ctx.textAlign = "right";
+          ctx.fillText(fields.specLine, rightX, textY);
+        } else if (layout === "stacked") {
+          const line1 = fields.shortMakeModel || fields.brand || fields.model;
+          const line2 = fields.specLine;
+          const topY = textY - extraInfoHeight * 0.14;
+          const bottomY = textY + extraInfoHeight * 0.14;
+
+          ctx.textAlign = "center";
+          ctx.font = fitText(line1, outputWidth * 0.72, brandFontSize, selectedFont, 700);
+          ctx.fillText(line1, centerX, topY);
+          ctx.font = fitText(line2, outputWidth * 0.78, smallFontSize, selectedFont, 500);
+          ctx.fillText(line2, centerX, bottomY);
+        } else if (layout === "minimal") {
+          const singleLine = [fields.shortMakeModel, fields.specLine].filter(Boolean).join(" · ");
+          ctx.textAlign = "center";
+          ctx.font = fitText(singleLine, outputWidth * 0.84, smallFontSize, selectedFont, 500);
+          ctx.fillText(singleLine, centerX, textY);
+        }
+      }
+
+      placeholder.hidden = true;
+      dropzone.hidden = false;
+      canvas.hidden = false;
+      updateMetaPanel(outputWidth, outputHeight);
+    }
+
+    function readValue(dataView, offset, length, littleEndian) {
+      switch (length) {
+        case 1: return dataView.getUint8(offset);
+        case 2: return dataView.getUint16(offset, littleEndian);
+        case 4: return dataView.getUint32(offset, littleEndian);
+        default: return null;
+      }
+    }
+
+    function readAscii(dataView, offset, count) {
+      const chars = [];
+      for (let i = 0; i < count - 1; i++) {
+        const c = dataView.getUint8(offset + i);
+        if (c === 0) break;
+        chars.push(String.fromCharCode(c));
+      }
+      return chars.join("").trim();
+    }
+
+    function readRational(dataView, offset, littleEndian) {
+      const numerator = dataView.getUint32(offset, littleEndian);
+      const denominator = dataView.getUint32(offset + 4, littleEndian);
+      return denominator ? numerator / denominator : 0;
+    }
+
+    function readTagValue(dataView, type, count, valueOffset, tiffStart, littleEndian) {
+      const typeSize = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8 };
+      const size = (typeSize[type] || 0) * count;
+      const actualOffset = size <= 4 ? valueOffset : tiffStart + dataView.getUint32(valueOffset, littleEndian);
+
+      switch (type) {
+        case 2:
+          return readAscii(dataView, actualOffset, count);
+        case 3:
+          return count === 1 ? dataView.getUint16(actualOffset, littleEndian) : null;
+        case 4:
+          return count === 1 ? dataView.getUint32(actualOffset, littleEndian) : null;
+        case 5:
+          return count === 1 ? readRational(dataView, actualOffset, littleEndian) : null;
+        default:
+          return null;
+      }
+    }
+
+    function parseIfd(dataView, ifdOffset, tiffStart, littleEndian, exif) {
+      if (!ifdOffset) return;
+      const entries = dataView.getUint16(ifdOffset, littleEndian);
+      const tags = {
+        0x010F: "Make",
+        0x0110: "Model",
+        0x8769: "ExifIFDPointer",
+        0x8827: "ISO",
+        0x829A: "ExposureTime",
+        0x829D: "FNumber",
+        0x920A: "FocalLength"
+      };
+
+      for (let i = 0; i < entries; i++) {
+        const entryOffset = ifdOffset + 2 + i * 12;
+        const tag = dataView.getUint16(entryOffset, littleEndian);
+        const type = dataView.getUint16(entryOffset + 2, littleEndian);
+        const count = dataView.getUint32(entryOffset + 4, littleEndian);
+        const valueOffset = entryOffset + 8;
+        const tagName = tags[tag];
+        if (!tagName) continue;
+
+        const value = readTagValue(dataView, type, count, valueOffset, tiffStart, littleEndian);
+        if (tagName === "ExifIFDPointer" && value) {
+          parseIfd(dataView, tiffStart + value, tiffStart, littleEndian, exif);
+        } else if (value !== null && value !== "") {
+          exif[tagName] = value;
+        }
+      }
+    }
+
+    function extractExif(arrayBuffer) {
+      const view = new DataView(arrayBuffer);
+      if (view.getUint16(0) !== 0xFFD8) return {};
+
+      let offset = 2;
+      while (offset < view.byteLength) {
+        const marker = view.getUint16(offset);
+        offset += 2;
+
+        if (marker === 0xFFE1) {
+          const app1Length = view.getUint16(offset);
+          const header = String.fromCharCode(
+            view.getUint8(offset + 2),
+            view.getUint8(offset + 3),
+            view.getUint8(offset + 4),
+            view.getUint8(offset + 5)
+          );
+
+          if (header !== "Exif") break;
+
+          const tiffStart = offset + 8;
+          const littleEndian = view.getUint16(tiffStart) === 0x4949;
+          const firstIfdOffset = view.getUint32(tiffStart + 4, littleEndian);
+          const exif = {};
+          parseIfd(view, tiffStart + firstIfdOffset, tiffStart, littleEndian, exif);
+          return exif;
+        }
+
+        if ((marker & 0xFF00) !== 0xFF00) break;
+        const size = view.getUint16(offset);
+        offset += size;
+      }
+      return {};
+    }
+
+    async function handleFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith("image/")) return;
+
+      if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+
+      state.imageName = file.name;
+      imageStatus.textContent = `載入中：${file.name}`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      state.exif = extractExif(arrayBuffer);
+      deriveDefaultTexts();
+
+      state.objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        state.image = img;
+        imageStatus.textContent = `${file.name} · ${img.width} × ${img.height}`;
+        downloadBtn.disabled = false;
+        drawPreview();
+      };
+      img.onerror = () => {
+        imageStatus.textContent = "照片載入失敗";
+      };
+      img.src = state.objectUrl;
+    }
+
+    function handleDrop(event) {
+      event.preventDefault();
+      dropzone.classList.remove("active");
+      const file = event.dataTransfer?.files?.[0];
+      if (file) {
+        fileInput.files = event.dataTransfer.files;
+        handleFile(file);
+      }
+    }
+
+    function downloadImage() {
+      if (!state.image) return;
+      const mime = exportFormat.value;
+      const extension = mime === "image/png" ? "png" : "jpg";
+      const filename = `${escapeFilename(state.imageName || "photo")}_framed.${extension}`;
+      const quality = mime === "image/jpeg" ? 0.96 : undefined;
+
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      }, mime, quality);
+    }
+
+    function resetFields() {
+      makeField.value = state.defaults.make || "";
+      modelField.value = state.defaults.model || "";
+      isoField.value = state.defaults.iso || "";
+      focalField.value = state.defaults.focal || "";
+      apertureField.value = state.defaults.aperture || "";
+      shutterField.value = state.defaults.shutter || "";
+      showMake.checked = true;
+      showModel.checked = true;
+      showISO.checked = true;
+      showFocal.checked = true;
+      showAperture.checked = true;
+      showShutter.checked = true;
+      infoLayout.value = "classic";
+      drawPreview();
+    }
+
+    fileInput.addEventListener("change", (event) => handleFile(event.target.files[0]));
+    ["dragenter", "dragover"].forEach((type) => {
+      window.addEventListener(type, (event) => {
+        event.preventDefault();
+        dropzone.classList.add("active");
+      });
+    });
+    ["dragleave", "dragend"].forEach((type) => {
+      window.addEventListener(type, () => dropzone.classList.remove("active"));
+    });
+    window.addEventListener("drop", handleDrop);
+
+    [frameColor, exportFormat, topPadding, rightPadding, bottomPadding, leftPadding, infoHeight, showInfo, infoLayout, fontFamily, showMake, showModel, showISO, showFocal, showAperture, showShutter, makeField, modelField, isoField, focalField, apertureField, shutterField].forEach((el) => {
+      el.addEventListener("input", () => {
+        updateRangeLabels();
+        drawPreview();
+      });
+      el.addEventListener("change", () => {
+        updateRangeLabels();
+        drawPreview();
+      });
+    });
+
+    downloadBtn.addEventListener("click", downloadImage);
+    resetBtn.addEventListener("click", resetFields);
+
+    updateRangeLabels();
+    drawPreview();
+  </script>
+</body>
+</html>
