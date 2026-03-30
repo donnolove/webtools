@@ -98,6 +98,52 @@
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
             padding: 20px;
             overflow: auto;
+            position: relative;
+            transition: box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+
+        .workspace.dragover {
+            box-shadow: inset 0 0 0 3px #007acc;
+            background-color: rgba(0, 122, 204, 0.12);
+        }
+
+        .drop-hint {
+            position: absolute;
+            inset: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed rgba(255, 255, 255, 0.35);
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 20px;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.2);
+            pointer-events: none;
+        }
+
+        .workspace.dragover .drop-hint {
+            display: flex;
+        }
+
+        .empty-state {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(480px, calc(100% - 48px));
+            text-align: center;
+            color: #cfcfcf;
+            font-size: 24px;
+            line-height: 1.6;
+            font-weight: 600;
+            pointer-events: none;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+        }
+
+        .workspace.has-image .empty-state,
+        .workspace.dragover .empty-state {
+            display: none;
         }
 
         canvas { box-shadow: 0 0 30px rgba(0,0,0,0.7); max-width: 95%; max-height: 95%; }
@@ -167,12 +213,15 @@
     </div>
 
     <div class="workspace">
+        <div class="empty-state">請點擊左側「匯入圖片」<br>或拖曳照片開始編輯</div>
+        <div class="drop-hint">拖曳圖片到這裡匯入</div>
         <canvas id="canvas"></canvas>
     </div>
 
     <script>
         const fileInput = document.getElementById('fileInput');
         const canvas = document.getElementById('canvas');
+        const workspace = document.querySelector('.workspace');
         const ctx = canvas.getContext('2d');
         const svgMatrix = document.getElementById('colorMatrix');
 
@@ -187,6 +236,24 @@
         let settings = { ...defaults };
         let originalImage = new Image();
         let isLoaded = false;
+
+        function loadImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                originalImage = new Image();
+                originalImage.onload = () => {
+                    canvas.width = originalImage.width;
+                    canvas.height = originalImage.height;
+                    isLoaded = true;
+                    workspace.classList.add('has-image');
+                    render();
+                };
+                originalImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
 
         // 綁定輸入事件
         const bindSlider = (id, key, unit = '') => {
@@ -213,26 +280,31 @@
 
         // 圖片匯入
         fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                originalImage = new Image();
-                originalImage.onload = () => {
-                    // 為了效能，如果圖片太大可以鎖定顯示大小，但這裡為了畫質保留原尺寸
-                    canvas.width = originalImage.width;
-                    canvas.height = originalImage.height;
-                    
-                    // 如果圖片太大，讓 canvas 在 CSS 上縮放適應螢幕，但實際像素不變
-                    isLoaded = true;
-                    render();
-                };
-                originalImage.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+            loadImageFile(e.target.files[0]);
+            fileInput.value = '';
         });
 
-        // 核心渲染引擎
+        ['dragenter', 'dragover'].forEach((eventName) => {
+            workspace.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                workspace.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach((eventName) => {
+            workspace.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (eventName === 'dragleave' && workspace.contains(e.relatedTarget)) return;
+                workspace.classList.remove('dragover');
+            });
+        });
+
+        workspace.addEventListener('drop', (e) => {
+            const file = [...e.dataTransfer.files].find((item) => item.type.startsWith('image/'));
+            loadImageFile(file);
+        });
         function render() {
             if (!isLoaded) return;
 
@@ -305,11 +377,6 @@
         }
 
         // 初始畫面
-        ctx.font = "bold 24px 'Segoe UI'";
-        ctx.fillStyle = "#555";
-        ctx.textAlign = "center";
-        ctx.fillText("請點擊左側「匯入圖片」開始編輯", canvas.width/2, canvas.height/2);
-
     </script>
 </body>
 </html>
