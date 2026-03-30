@@ -415,8 +415,22 @@
         let isLibraryLoaded = false;
         let selectedFocalKey = null;
         let selectedLensKey = null;
+        const lensDecodeTextarea = document.createElement('textarea');
+        const utf8Decoder = new TextDecoder('utf-8', { fatal: false });
+        const latin1Decoder = new TextDecoder('latin1');
+        const lensXmpPatterns = [
+            /aux:Lens="([^"]+)"/i,
+            /exifEX:LensModel="([^"]+)"/i,
+            /LensModel="([^"]+)"/i,
+            /<aux:Lens>([^<]+)<\/aux:Lens>/i,
+            /<xmpAux:Lens>([^<]+)<\/xmpAux:Lens>/i,
+            /<exifEX:LensModel>([^<]+)<\/exifEX:LensModel>/i,
+            /<LensModel>([^<]+)<\/LensModel>/i
+        ];
+        const ANALYSIS_BATCH_SIZE = Math.max(2, Math.min(8, Math.floor((navigator.hardwareConcurrency || 4) / 2) || 4));
+        const LENS_SCAN_CHUNK_SIZE = 512 * 1024;
 
-        // --- Tab 切換邏輯 (NEW) ---
+        // --- Tab 切換邏輯 ---
         window.showTab = function(tabId) {
             // 隱藏所有 Tab 內容
             Object.values(tabContents).forEach(content => content.classList.remove('active'));
@@ -481,18 +495,6 @@
             const undefinedA434 = formatLensTagValue(EXIF.getTag(exifContext, 'UndefinedTag:0xA434'));
             if (undefinedA434) return undefinedA434;
 
-            const allTags = EXIF.getAllTags(exifContext) || {};
-            const allTagCandidates = [
-                allTags.LensModel,
-                allTags.Lens,
-                allTags['UndefinedTag:0xA434'],
-                allTags['0xA434']
-            ];
-            for (const candidate of allTagCandidates) {
-                const label = formatLensTagValue(candidate);
-                if (label) return label;
-            }
-
             const lensInfo = formatLensTagValue(EXIF.getTag(exifContext, 'LensInfo'));
             if (lensInfo) return lensInfo;
 
@@ -507,37 +509,57 @@
                 }
             }
 
+            const allTags = EXIF.getAllTags(exifContext) || {};
+            const allTagCandidates = [
+                allTags.LensModel,
+                allTags.Lens,
+                allTags['UndefinedTag:0xA434'],
+                allTags['0xA434']
+            ];
+            for (const candidate of allTagCandidates) {
+                const label = formatLensTagValue(candidate);
+                if (label) return label;
+            }
+
             return '';
         }
 
         function decodeHtmlEntities(text) {
-            const textarea = document.createElement('textarea');
-            textarea.innerHTML = text;
-            return textarea.value.trim();
+            lensDecodeTextarea.innerHTML = text;
+            return lensDecodeTextarea.value.trim();
+        }
+
+        async function readFileChunk(file, start, end) {
+            const safeStart = Math.max(0, start);
+            const safeEnd = Math.min(file.size, end);
+            if (safeEnd <= safeStart) return null;
+            return file.slice(safeStart, safeEnd).arrayBuffer();
         }
 
         async function extractLensLabelFromFile(file) {
             try {
-                const buffer = await file.arrayBuffer();
-                const utf8Text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
-                const latin1Text = new TextDecoder('latin1').decode(buffer);
-                const searchPool = [utf8Text, latin1Text];
-                const patterns = [
-                    /aux:Lens="([^"]+)"/i,
-                    /exifEX:LensModel="([^"]+)"/i,
-                    /LensModel="([^"]+)"/i,
-                    /<aux:Lens>([^<]+)<\/aux:Lens>/i,
-                    /<xmpAux:Lens>([^<]+)<\/xmpAux:Lens>/i,
-                    /<exifEX:LensModel>([^<]+)<\/exifEX:LensModel>/i,
-                    /<LensModel>([^<]+)<\/LensModel>/i
-                ];
+                const buffers = [];
+                const headBuffer = await readFileChunk(file, 0, LENS_SCAN_CHUNK_SIZE);
+                if (headBuffer) buffers.push(headBuffer);
 
-                for (const source of searchPool) {
-                    for (const pattern of patterns) {
-                        const match = source.match(pattern);
-                        if (match && match[1]) {
-                            const label = decodeHtmlEntities(match[1]).replace(/\u0000/g, '').trim();
-                            if (label) return label;
+                if (file.size > LENS_SCAN_CHUNK_SIZE) {
+                    const tailBuffer = await readFileChunk(file, file.size - LENS_SCAN_CHUNK_SIZE, file.size);
+                    if (tailBuffer) buffers.push(tailBuffer);
+                }
+
+                for (const buffer of buffers) {
+                    const searchPool = [
+                        utf8Decoder.decode(buffer),
+                        latin1Decoder.decode(buffer)
+                    ];
+
+                    for (const source of searchPool) {
+                        for (const pattern of lensXmpPatterns) {
+                            const match = source.match(pattern);
+                            if (match && match[1]) {
+                                const label = decodeHtmlEntities(match[1]).replace(/\u0000/g, '').trim();
+                                if (label) return label;
+                            }
                         }
                     }
                 }
@@ -665,23 +687,40 @@
             });
         }
 
-        // --- EXIF 分析 (未修改) ---
+        // --- EXIF 分析 ---
         async function processFiles(files) {
             statusDiv.innerText = `🔍 準備分析 ${files.length} 張照片...`;
-            
-            for (let i = 0; i < files.length; i++) {
-                await readExifSafe(files[i]);
-                if (i % 20 === 0 || i === files.length - 1) {
-                    statusDiv.innerText = `🔄 分析進度: ${i + 1} / ${files.length}`;
-                }
-            }
 
-            statusDiv.innerText = "✅ 分析完成！";
+            let processedCount = 0;
+            const updateProgress = () => {
+                statusDiv.innerText = `🔄 分析進度：${processedCount} / ${files.length}`;
+            };
+
+            updateProgress();
+
+            let nextIndex = 0;
+            const workerCount = Math.min(ANALYSIS_BATCH_SIZE, files.length);
+            const workers = Array.from({ length: workerCount }, async () => {
+                while (nextIndex < files.length) {
+                    const currentIndex = nextIndex++;
+                    await readExifSafe(files[currentIndex]);
+                    processedCount++;
+
+                    if (processedCount % 10 === 0 || processedCount === files.length) {
+                        updateProgress();
+                        await new Promise(resolve => requestAnimationFrame(resolve));
+                    }
+                }
+            });
+
+            await Promise.all(workers);
+
+            statusDiv.innerText = "✅ 圖片讀取完成，分析完成！";
             statusDiv.style.color = "#28a745";
             renderCharts();
         }
 
-        // 安全讀取 EXIF (含超時機制)
+        // 安全讀取 EXIF（含超時機制）
         function readExifSafe(file) {
             return new Promise((resolve) => {
                 let isResolved = false;
