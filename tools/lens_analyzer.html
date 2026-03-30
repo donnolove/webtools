@@ -178,6 +178,7 @@
         .flash-bar { background: linear-gradient(90deg, #f0ad4e, #f8d7a3); } 
         .wb-bar { background: linear-gradient(90deg, #66d9ef, #a6e22e); } 
         .metering-bar { background: linear-gradient(90deg, #f92672, #ff5988); } 
+        .lens-bar { background: linear-gradient(90deg, #6f42c1, #a78bfa); } 
 
         /* 計數顯示在長條圖右側 */
         .count-display {
@@ -196,13 +197,35 @@
             border-radius: 8px;
             margin-bottom: 20px;
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 10px;
             border-left: 4px solid #007acc;
         }
         .stat-item { text-align: center; }
         .stat-val { font-size: 20px; font-weight: bold; color: #fff; }
+        .stat-item.lens-stat-item { grid-column: 1 / -1; background: rgba(111, 66, 193, 0.12); border: 1px solid rgba(167, 139, 250, 0.24); border-radius: 10px; padding: 12px 14px; }
+        .stat-val.lens-stat-val { font-size: 18px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .stat-desc { font-size: 10px; color: #888; }
+        .tag-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 8px; }
+        .tag-chip { background: rgba(167, 139, 250, 0.16); border: 1px solid rgba(167, 139, 250, 0.35); color: #d8ccff; border-radius: 999px; padding: 4px 8px; font-size: 11px; line-height: 1.2; max-width: 100%; word-break: break-word; }
+        .tag-chip.empty { background: transparent; border-style: dashed; color: #888; }
+        .label.lens-label { width: 220px; white-space: normal; word-break: break-word; line-height: 1.35; font-size: 12px; }
+        .chart-row.clickable { cursor: pointer; transition: transform 0.15s ease, background-color 0.15s ease; border-radius: 6px; }
+        .chart-row.clickable:hover { background-color: rgba(255,255,255,0.04); transform: translateX(2px); }
+        .chart-row.selected { background-color: rgba(0, 180, 204, 0.12); }
+        .chart-row .sub-label { display: block; font-size: 10px; color: #8e8e8e; margin-top: 2px; }
+        .detail-panel { margin: 0 20px 20px 20px; padding: 14px; border-radius: 10px; background: #202124; border: 1px solid #3a3a3a; }
+        .detail-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+        .detail-hint { font-size: 12px; color: #999; margin-bottom: 12px; }
+        .detail-list { display: flex; flex-direction: column; gap: 10px; }
+        .detail-row { display: flex; align-items: center; gap: 10px; }
+        .detail-label { width: 220px; font-size: 12px; color: #ddd; line-height: 1.35; word-break: break-word; }
+        .detail-bar-wrap { flex: 1; height: 16px; background: #333; border-radius: 999px; overflow: hidden; }
+        .detail-bar { height: 100%; background: linear-gradient(90deg, #6f42c1, #a78bfa); }
+        .detail-count { width: 46px; font-size: 12px; color: #d8ccff; font-weight: 700; text-align: right; }
+        .inline-detail { margin: -2px 20px 12px 20px; padding: 12px; border-radius: 8px; background: #202124; border: 1px solid #3a3a3a; }
+        .inline-detail .detail-title { font-size: 14px; margin-bottom: 8px; }
+        .inline-detail .detail-hint { margin-bottom: 10px; }
 
     </style>
 </head>
@@ -264,6 +287,11 @@
                 <div class="stat-val" id="top-metering">--</div>
                 <div class="stat-desc">最愛用的測光模式</div>
             </div>
+            <div class="stat-item lens-stat-item">
+                <div class="stat-val lens-stat-val" id="top-lens">🔭 --</div>
+                <div class="stat-desc">🔭 最常用鏡頭</div>
+                <div class="tag-list" id="lens-tags"></div>
+            </div>
         </div>
         
         <!-- Tab 導航列 -->
@@ -273,6 +301,7 @@
             <button class="tab-button" onclick="showTab('shutter')">💨 快門</button>
             <button class="tab-button" onclick="showTab('iso')">💡 ISO</button>
             <button class="tab-button" onclick="showTab('camera')">📷 機型</button>
+            <button class="tab-button" onclick="showTab('lens')">🔭 鏡頭</button>
             <button class="tab-button" onclick="showTab('flash')">⚡ 閃光燈</button>
             <button class="tab-button" onclick="showTab('wb')">☀️ 白平衡</button>
             <button class="tab-button" onclick="showTab('metering')">🎯 測光</button>
@@ -309,6 +338,12 @@
                 <div class="chart-title">📷 相機機型使用頻率 (Camera Model)</div>
                 <div id="camera-chart-area"></div>
             </div>
+
+            <div id="lens-tab" class="tab-content">
+                <div class="chart-title">🔭 鏡頭型號使用頻率 (Lens Model)</div>
+                <div id="lens-chart-area"></div>
+                <div class="detail-panel" id="lens-focal-detail"></div>
+            </div>
             
             <!-- 閃光燈使用統計區 -->
             <div id="flash-tab" class="tab-content">
@@ -337,6 +372,7 @@
         const errorLog = document.getElementById('error-log');
         const resultsDiv = document.getElementById('results');
         const fileInput = document.getElementById('fileInput');
+        const lensFocalDetail = document.getElementById('lens-focal-detail');
 
         // Chart Area IDs
         const chartAreas = {
@@ -345,6 +381,7 @@
             shutter: document.getElementById('shutter-chart-area'),
             iso: document.getElementById('iso-chart-area'),
             camera: document.getElementById('camera-chart-area'),
+            lens: document.getElementById('lens-chart-area'),
             flash: document.getElementById('flash-chart-area'),
             wb: document.getElementById('wb-chart-area'),
             metering: document.getElementById('metering-chart-area')
@@ -357,6 +394,7 @@
             shutter: document.getElementById('shutter-tab'),
             iso: document.getElementById('iso-tab'),
             camera: document.getElementById('camera-tab'),
+            lens: document.getElementById('lens-tab'),
             flash: document.getElementById('flash-tab'),
             wb: document.getElementById('wb-tab'),
             metering: document.getElementById('metering-tab')
@@ -366,12 +404,17 @@
         let apertureStats = {};
         let shutterStats = {};
         let isoStats = {};
+        let focalLensStats = {};
+        let lensFocalStats = {};
         let cameraStats = {};     
+        let lensStats = {};       
         let flashStats = {};      
         let wbStats = {};         
         let meteringStats = {};   
         let validPhotos = 0;
         let isLibraryLoaded = false;
+        let selectedFocalKey = null;
+        let selectedLensKey = null;
 
         // --- Tab 切換邏輯 (NEW) ---
         window.showTab = function(tabId) {
@@ -415,6 +458,94 @@
                 case 6: return "閃光燈 (Flash)";
                 default: return `預設值 ${value} / 未知`; 
             }
+        }
+
+        function formatLensTagValue(value) {
+            if (!value) return '';
+            if (Array.isArray(value)) {
+                return value.map(v => formatLensTagValue(v)).filter(Boolean).join(' ').trim();
+            }
+            if (typeof value === 'object') {
+                if ('numerator' in value && 'denominator' in value && Number(value.denominator) !== 0) {
+                    return String(Number(value.numerator) / Number(value.denominator));
+                }
+                return '';
+            }
+            return String(value).replace(/\u0000/g, '').trim();
+        }
+
+        function getLensLabel(exifContext) {
+            const lensModel = formatLensTagValue(EXIF.getTag(exifContext, 'LensModel'));
+            if (lensModel) return lensModel;
+
+            const undefinedA434 = formatLensTagValue(EXIF.getTag(exifContext, 'UndefinedTag:0xA434'));
+            if (undefinedA434) return undefinedA434;
+
+            const allTags = EXIF.getAllTags(exifContext) || {};
+            const allTagCandidates = [
+                allTags.LensModel,
+                allTags.Lens,
+                allTags['UndefinedTag:0xA434'],
+                allTags['0xA434']
+            ];
+            for (const candidate of allTagCandidates) {
+                const label = formatLensTagValue(candidate);
+                if (label) return label;
+            }
+
+            const lensInfo = formatLensTagValue(EXIF.getTag(exifContext, 'LensInfo'));
+            if (lensInfo) return lensInfo;
+
+            const lensSpecification = EXIF.getTag(exifContext, 'LensSpecification');
+            if (Array.isArray(lensSpecification) && lensSpecification.length === 4) {
+                const values = lensSpecification.map(v => Number(formatLensTagValue(v)));
+                if (values.every(v => Number.isFinite(v))) {
+                    const [fMin, fMax, aMin, aMax] = values;
+                    const focal = fMin === fMax ? `${fMin}mm` : `${fMin}-${fMax}mm`;
+                    const aperture = aMin === aMax ? `f/${aMin}` : `f/${aMin}-${aMax}`;
+                    return `${focal} ${aperture}`;
+                }
+            }
+
+            return '';
+        }
+
+        function decodeHtmlEntities(text) {
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            return textarea.value.trim();
+        }
+
+        async function extractLensLabelFromFile(file) {
+            try {
+                const buffer = await file.arrayBuffer();
+                const utf8Text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+                const latin1Text = new TextDecoder('latin1').decode(buffer);
+                const searchPool = [utf8Text, latin1Text];
+                const patterns = [
+                    /aux:Lens="([^"]+)"/i,
+                    /exifEX:LensModel="([^"]+)"/i,
+                    /LensModel="([^"]+)"/i,
+                    /<aux:Lens>([^<]+)<\/aux:Lens>/i,
+                    /<xmpAux:Lens>([^<]+)<\/xmpAux:Lens>/i,
+                    /<exifEX:LensModel>([^<]+)<\/exifEX:LensModel>/i,
+                    /<LensModel>([^<]+)<\/LensModel>/i
+                ];
+
+                for (const source of searchPool) {
+                    for (const pattern of patterns) {
+                        const match = source.match(pattern);
+                        if (match && match[1]) {
+                            const label = decodeHtmlEntities(match[1]).replace(/\u0000/g, '').trim();
+                            if (label) return label;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('Lens fallback parse failed:', error);
+            }
+
+            return '';
         }
 
         function getMeteringModeString(value) {
@@ -560,20 +691,21 @@
                         isResolved = true;
                         resolve(); 
                     }
-                }, 1000);
+                }, 3000);
 
                 try {
-                    EXIF.getData(file, function() {
+                    EXIF.getData(file, async function() {
                         if (isResolved) return; 
                         
                         let hasData = false;
 
                         // 1. 焦段 (Focal Length)
                         const focalLen = EXIF.getTag(this, "FocalLength");
+                        let focalKey = '';
                         if (focalLen) {
                             const val = Math.round(Number(focalLen));
-                            const key = val + "mm";
-                            focalStats[key] = (focalStats[key] || 0) + 1;
+                            focalKey = val + "mm";
+                            focalStats[focalKey] = (focalStats[focalKey] || 0) + 1;
                             hasData = true;
                         }
 
@@ -618,7 +750,20 @@
                             hasData = true;
                         }
 
-                        // 6. 閃光燈使用 (Flash)
+                        // 6. 鏡頭型號 (Lens Model)
+                        const lens = getLensLabel(this) || await extractLensLabelFromFile(file);
+                        if (lens) {
+                            lensStats[lens] = (lensStats[lens] || 0) + 1;
+                            if (focalKey) {
+                                focalLensStats[focalKey] = focalLensStats[focalKey] || {};
+                                focalLensStats[focalKey][lens] = (focalLensStats[focalKey][lens] || 0) + 1;
+                                lensFocalStats[lens] = lensFocalStats[lens] || {};
+                                lensFocalStats[lens][focalKey] = (lensFocalStats[lens][focalKey] || 0) + 1;
+                            }
+                            hasData = true;
+                        }
+
+                        // 7. Flash
                         const flash = EXIF.getTag(this, "Flash");
                         if (flash !== undefined) {
                             let key;
@@ -631,7 +776,7 @@
                             hasData = true;
                         }
                         
-                        // 7. 白平衡 (WhiteBalance)
+                        // 8. WhiteBalance
                         const wb = EXIF.getTag(this, "WhiteBalance");
                         if (wb !== undefined) {
                             const key = getWhiteBalanceString(wb);
@@ -639,7 +784,7 @@
                             hasData = true;
                         }
                         
-                        // 8. 測光模式 (MeteringMode)
+                        // 9. MeteringMode
                         const metering = EXIF.getTag(this, "MeteringMode");
                         if (metering !== undefined) {
                             const key = getMeteringModeString(metering);
@@ -671,14 +816,24 @@
             apertureStats = {};
             shutterStats = {}; 
             isoStats = {};     
+            focalLensStats = {};
+            lensFocalStats = {};
             cameraStats = {};    
+            lensStats = {};      
             flashStats = {};     
             wbStats = {};         
             meteringStats = {};   
             validPhotos = 0;
+            selectedFocalKey = null;
+            selectedLensKey = null;
             resultsDiv.style.display = 'none';
             Object.values(chartAreas).forEach(area => area.innerHTML = ''); // 清空所有圖表區
             errorLog.innerHTML = '';
+            const lensTags = document.getElementById('lens-tags');
+            if (lensTags) lensTags.innerHTML = '';
+            const topLensEl = document.getElementById('top-lens');
+            if (topLensEl) topLensEl.innerText = '🔭 --';
+            if (lensFocalDetail) lensFocalDetail.innerHTML = '';
             statusDiv.style.color = "#007acc";
         }
 
@@ -735,21 +890,43 @@
             sortedCameraStats.forEach(([f, c]) => { if (c > maxCameraCount) { maxCameraCount = c; topCamera = f; } });
             document.getElementById('top-camera').innerText = topCamera;
             
-            // 6. 閃光燈 (Flash)
+            // 6. 鏡頭型號 (Lens)
+            const sortedLensStats = Object.entries(lensStats).sort((a, b) => b[1] - a[1]);
+            let maxLensCount = 0;
+            let topLens = "N/A";
+            sortedLensStats.forEach(([f, c]) => { if (c > maxLensCount) { maxLensCount = c; topLens = f; } });
+            document.getElementById('top-lens').innerText = `🔭 ${topLens}`;
+
+            const lensTags = document.getElementById('lens-tags');
+            lensTags.innerHTML = '';
+            if (sortedLensStats.length === 0) {
+                lensTags.innerHTML = '<span class="tag-chip empty">未偵測到鏡頭 EXIF / XMP</span>';
+            } else {
+                const rankIcons = ['🥇', '🥈', '🥉'];
+                sortedLensStats.slice(0, 3).forEach(([lensName, lensCount], index) => {
+                    const chip = document.createElement('span');
+                    chip.className = 'tag-chip';
+                    chip.title = lensName;
+                    chip.textContent = `${rankIcons[index] || `#${index + 1}`} ${lensName} × ${lensCount}`;
+                    lensTags.appendChild(chip);
+                });
+            }
+
+            // 7. Flash
             const sortedFlashStats = Object.entries(flashStats).sort((a, b) => b[1] - a[1]); 
             let maxFlashCount = 0;
             let topFlash = "N/A";
             sortedFlashStats.forEach(([f, c]) => { if (c > maxFlashCount) { maxFlashCount = c; topFlash = f; } });
             document.getElementById('top-flash').innerText = topFlash;
 
-            // 7. 白平衡 (White Balance)
+            // 8. White Balance
             const sortedWBStats = Object.entries(wbStats).sort((a, b) => b[1] - a[1]);
             let maxWBCount = 0;
             let topWB = "N/A";
             sortedWBStats.forEach(([f, c]) => { if (c > maxWBCount) { maxWBCount = c; topWB = f; } });
             document.getElementById('top-wb').innerText = topWB;
 
-            // 8. 測光模式 (Metering Mode)
+            // 9. Metering Mode
             const sortedMeteringStats = Object.entries(meteringStats).sort((a, b) => b[1] - a[1]);
             let maxMeteringCount = 0;
             let topMetering = "N/A";
@@ -763,12 +940,86 @@
             renderChart(sortedShutterStats, chartAreas.shutter, maxShutterCount, 'shutter-bar');
             renderChart(sortedISOStats, chartAreas.iso, maxISOCount, 'iso-bar');
             renderChart(sortedCameraStats, chartAreas.camera, maxCameraCount, 'camera-bar');
+            renderChart(sortedLensStats, chartAreas.lens, maxLensCount, 'lens-bar');
             renderChart(sortedFlashStats, chartAreas.flash, maxFlashCount, 'flash-bar');
             renderChart(sortedWBStats, chartAreas.wb, maxWBCount, 'wb-bar');
             renderChart(sortedMeteringStats, chartAreas.metering, maxMeteringCount, 'metering-bar');
+
+            selectedFocalKey = null;
+            selectedLensKey = sortedLensStats.length > 0 ? sortedLensStats[0][0] : null;
+            renderLensFocalDetail(selectedLensKey);
             
             // 預設顯示第一個 Tab (焦段)
             showTab('focal');
+        }
+
+        function getFocalLensDetailMarkup(focalKey) {
+            if (!focalKey || !focalLensStats[focalKey]) return '';
+
+            const lensEntries = Object.entries(focalLensStats[focalKey]).sort((a, b) => b[1] - a[1]);
+            const maxCount = lensEntries[0]?.[1] || 1;
+            const lensCount = lensEntries.length;
+
+            const detailRows = lensEntries.map(([lensName, count]) => {
+                const percentage = (count / maxCount) * 100;
+                return `
+                    <div class="detail-row">
+                        <div class="detail-label" title="${lensName.replace(/"/g, '&quot;')}">🔭 ${lensName}</div>
+                        <div class="detail-bar-wrap">
+                            <div class="detail-bar" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="detail-count">${count}</div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="inline-detail">
+                    <div class="detail-title">🔭 ${focalKey} 使用的鏡頭</div>
+                    <div class="detail-hint">這個焦段共由 ${lensCount} 顆鏡頭拍攝，再點一次可收合。</div>
+                    <div class="detail-list">${detailRows}</div>
+                </div>
+            `;
+        }
+
+        function renderLensFocalDetail(lensKey) {
+            if (!lensFocalDetail) return;
+
+            if (!lensKey || !lensFocalStats[lensKey]) {
+                lensFocalDetail.innerHTML = `
+                    <div class="detail-title">🔭 鏡頭焦段分布</div>
+                    <div class="detail-hint">點擊上方任一鏡頭，查看這顆鏡頭常拍哪些焦段。</div>
+                `;
+                return;
+            }
+
+            selectedLensKey = lensKey;
+            const focalEntries = Object.entries(lensFocalStats[lensKey]).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+            const maxCount = Math.max(...focalEntries.map(([, count]) => count), 1);
+            const focalCount = focalEntries.length;
+
+            const detailRows = focalEntries.map(([focalKey, count]) => {
+                const percentage = (count / maxCount) * 100;
+                return `
+                    <div class="detail-row">
+                        <div class="detail-label" title="${focalKey}">🔭 ${focalKey}</div>
+                        <div class="detail-bar-wrap">
+                            <div class="detail-bar" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="detail-count">${count}</div>
+                    </div>
+                `;
+            }).join('');
+
+            lensFocalDetail.innerHTML = `
+                <div class="detail-title">🔭 ${lensKey} 常用焦段</div>
+                <div class="detail-hint">這顆鏡頭共拍攝 ${focalCount} 個焦段，點上方其他鏡頭可切換查看。</div>
+                <div class="detail-list">${detailRows}</div>
+            `;
+
+            document.querySelectorAll('#lens-chart-area .chart-row').forEach(row => {
+                row.classList.toggle('selected', row.dataset.lensKey === lensKey);
+            });
         }
 
         function renderChart(sortedStats, chartArea, maxCount, barClass) {
@@ -783,6 +1034,15 @@
                 const percentage = (count / maxCount) * 100; 
                 const row = document.createElement('div');
                 row.className = 'chart-row';
+                const labelClass = barClass === 'lens-bar' ? 'label lens-label' : 'label';
+                const isFocalChart = barClass === 'focal-bar';
+                const isLensChart = barClass === 'lens-bar';
+                const relatedLensCount = isFocalChart && focalLensStats[label] ? Object.keys(focalLensStats[label]).length : 0;
+                const displayLabel = isFocalChart && relatedLensCount > 0
+                    ? `${label}<span class="sub-label">${relatedLensCount} 顆鏡頭</span>`
+                    : (isLensChart && lensFocalStats[label]
+                        ? `${label}<span class="sub-label">${Object.keys(lensFocalStats[label]).length} 個焦段</span>`
+                        : label);
                 
                 let color;
                 // 根據 barClass 設置顏色以匹配長條圖的漸層
@@ -792,6 +1052,7 @@
                     case 'shutter-bar': color = '#28a745'; break;
                     case 'iso-bar': color = '#9f3e9f'; break;
                     case 'camera-bar': color = '#17a2b8'; break;
+                    case 'lens-bar': color = '#a78bfa'; break;
                     case 'flash-bar': color = '#f0ad4e'; break;
                     case 'wb-bar': color = '#66d9ef'; break;
                     case 'metering-bar': color = '#f92672'; break;
@@ -799,13 +1060,43 @@
                 }
                 
                 row.innerHTML = `
-                    <div class="label">${label}</div>
+                    <div class="${labelClass}" title="${label.replace(/"/g, '&quot;')}">${displayLabel}</div>
                     <div class="bar-container">
                         <div class="bar ${barClass}" style="width: ${percentage}%"></div>
                     </div>
                     <div class="count-display" style="color: ${color}">${count}</div>
                 `;
+
+                if (isFocalChart) {
+                    row.classList.add('clickable');
+                    row.dataset.focalKey = label;
+                    row.addEventListener('click', () => {
+                        selectedFocalKey = selectedFocalKey === label ? null : label;
+                        renderChart(sortedStats, chartArea, maxCount, barClass);
+                    });
+                    if (selectedFocalKey === label) {
+                        row.classList.add('selected');
+                    }
+                }
+
+                if (isLensChart) {
+                    row.classList.add('clickable');
+                    row.dataset.lensKey = label;
+                    row.addEventListener('click', () => renderLensFocalDetail(label));
+                    if (selectedLensKey === label) {
+                        row.classList.add('selected');
+                    }
+                }
+
                 chartArea.appendChild(row);
+
+                if (isFocalChart && selectedFocalKey === label) {
+                    const detailWrapper = document.createElement('div');
+                    detailWrapper.innerHTML = getFocalLensDetailMarkup(label);
+                    if (detailWrapper.firstElementChild) {
+                        chartArea.appendChild(detailWrapper.firstElementChild);
+                    }
+                }
             });
         }
     </script>
