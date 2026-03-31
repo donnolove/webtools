@@ -226,6 +226,21 @@
         .inline-detail { margin: -2px 20px 12px 20px; padding: 12px; border-radius: 8px; background: #202124; border: 1px solid #3a3a3a; }
         .inline-detail .detail-title { font-size: 14px; margin-bottom: 8px; }
         .inline-detail .detail-hint { margin-bottom: 10px; }
+        .export-actions { display: flex; justify-content: flex-end; margin: 0 0 16px 0; }
+        .export-actions { gap: 10px; flex-wrap: wrap; }
+        .export-button {
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #007acc, #6f42c1);
+            color: #fff;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+        .export-button:hover { transform: translateY(-1px); opacity: 0.95; }
+        .export-button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
     </style>
 </head>
@@ -244,6 +259,11 @@
     <div id="error-log"></div>
 
     <div class="results-container" id="results">
+        <div class="export-actions">
+            <button id="export-image-button" class="export-button" type="button" disabled>🖼️ 匯出統計圖片</button>
+            <button id="export-social-button" class="export-button" type="button" disabled>✨ 匯出社群版</button>
+            <button id="export-story-button" class="export-button" type="button" disabled>📱 匯出限動版</button>
+        </div>
         <!-- 總結數據卡片 -->
         <div class="summary-card">
             <!-- 總計 & 曝光鐵三角 (4 欄) -->
@@ -373,6 +393,9 @@
         const resultsDiv = document.getElementById('results');
         const fileInput = document.getElementById('fileInput');
         const lensFocalDetail = document.getElementById('lens-focal-detail');
+        const exportImageButton = document.getElementById('export-image-button');
+        const exportSocialButton = document.getElementById('export-social-button');
+        const exportStoryButton = document.getElementById('export-story-button');
 
         // Chart Area IDs
         const chartAreas = {
@@ -406,6 +429,10 @@
         let isoStats = {};
         let focalLensStats = {};
         let lensFocalStats = {};
+        let lensSourceStats = {};
+        let lensSourceByLens = {};
+        let lensDisplayByKey = {};
+        let lensMetaByKey = {};
         let cameraStats = {};     
         let lensStats = {};       
         let flashStats = {};      
@@ -429,6 +456,8 @@
         ];
         const ANALYSIS_BATCH_SIZE = Math.max(2, Math.min(8, Math.floor((navigator.hardwareConcurrency || 4) / 2) || 4));
         const LENS_SCAN_CHUNK_SIZE = 512 * 1024;
+        const GENERIC_LENS_SOURCE_LABEL = '可能來自相機私有欄位';
+        const LENS_BRAND_WORDS = ['Sony', 'Canon', 'Nikon', 'Tamron', 'Sigma', 'Fujifilm', 'Fujinon', 'Lumix', 'Panasonic', 'Leica', 'Olympus', 'OM System', 'Zeiss', 'Voigtlander', 'Tokina', 'Samyang', 'Rokinon', 'Viltrox', 'TTArtisan', '7Artisans'];
 
         // --- Tab 切換邏輯 ---
         window.showTab = function(tabId) {
@@ -488,16 +517,244 @@
             return String(value).replace(/\u0000/g, '').trim();
         }
 
-        function getLensLabel(exifContext) {
-            const lensModel = formatLensTagValue(EXIF.getTag(exifContext, 'LensModel'));
-            if (lensModel) return lensModel;
+        function isLikelyLensLabel(label) {
+            if (!label) return false;
+            const normalized = String(label).replace(/\s+/g, ' ').trim();
+            if (!normalized || normalized.length < 3) return false;
+            if (/^(?:true|false|null|undefined|nan)$/i.test(normalized)) return false;
+            if (/^[\d.\-\/ ]+$/.test(normalized)) return false;
+            if (hasGarbledLensText(normalized)) return false;
 
-            const undefinedA434 = formatLensTagValue(EXIF.getTag(exifContext, 'UndefinedTag:0xA434'));
-            if (undefinedA434) return undefinedA434;
+            const lower = normalized.toLowerCase();
+            return /lens|nikkor|canon|nikon|sony|sigma|tamron|fujinon|fujifilm|lumix|leica|olympus|m\.zuiko|zuiko|voigtlander|tokina|zeiss|rf|ef|fe|gm|dg|xf|gf|e pz|dc|vr|oss|ois|stm|usm|mm|f\/|f\d/.test(lower);
+        }
 
-            const lensInfo = formatLensTagValue(EXIF.getTag(exifContext, 'LensInfo'));
-            if (lensInfo) return lensInfo;
+        function hasGarbledLensText(label) {
+            const text = String(label || '');
+            if (!text) return true;
 
+            const suspiciousCharMatches = text.match(/[^\u4e00-\u9fffA-Za-z0-9\s\-+/.()&,:;'"*[\]]/g) || [];
+            const suspiciousRatio = suspiciousCharMatches.length / Math.max(text.length, 1);
+            if (suspiciousRatio > 0.18) return true;
+
+            const latinWordCount = (text.match(/[A-Za-z]{2,}/g) || []).length;
+            const digitCount = (text.match(/\d/g) || []).length;
+            const weirdBurstCount = (text.match(/[^\u4e00-\u9fffA-Za-z0-9\s]{3,}/g) || []).length;
+
+            if (weirdBurstCount > 0 && latinWordCount < 2 && digitCount < 2) return true;
+            if (/[�]/.test(text)) return true;
+
+            return false;
+        }
+
+        function normalizeLensLabel(label) {
+            const normalized = String(label || '')
+                .replace(/\u0000/g, ' ')
+                .replace(/[\u0001-\u001f\u007f-\u009f]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/[|]+/g, ' ')
+                .trim();
+            return isLikelyLensLabel(normalized) ? normalized : '';
+        }
+
+        function cleanupLensNoise(label) {
+            return String(label || '')
+                .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+                .replace(/\s+[A-Z]?\d{2,4}\s*$/i, ' ')
+                .replace(/[^\u4e00-\u9fffA-Za-z0-9\s\-+/.()&,:;'"*[\]]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/\s+([()])/g, '$1')
+                .replace(/([()])\s+/g, '$1 ')
+                .trim();
+        }
+
+        function extractLensMountTokens(label) {
+            const hits = String(label || '').match(/\b(FE|RF|EF-M|EF-S|EF|XF|GF|Z|E|DX|FX)\b/ig) || [];
+            return [...new Set(hits.map(token => token.toUpperCase()))];
+        }
+
+        function extractLensModelCodes(label) {
+            const matches = String(label || '').match(/\b(?:SEL\d+[A-Z0-9]+|A\d{3}|SAL\d+[A-Z0-9]+|SELP?\d+[A-Z0-9]+)\b/ig) || [];
+            return [...new Set(matches.map(item => item.toUpperCase()))];
+        }
+
+        function extractLensSpecParts(label) {
+            const cleaned = cleanupLensNoise(label);
+            const focal = cleaned.match(/\b\d{1,3}(?:\.\d+)?(?:-\d{1,3}(?:\.\d+)?)?mm\b/i)?.[0]?.toLowerCase() || '';
+            const aperture = cleaned.match(/\bF\s*\/?\s*\d(?:\.\d+)?(?:-\d(?:\.\d+)?)?\b/i)?.[0]
+                ?.replace(/\s+/g, '')
+                .replace(/^F/i, 'F') || '';
+            return { focal, aperture };
+        }
+
+        function buildCanonicalLensKey(label) {
+            const cleaned = cleanupLensNoise(label);
+            const mounts = extractLensMountTokens(cleaned);
+            const modelCodes = extractLensModelCodes(cleaned);
+            const { focal, aperture } = extractLensSpecParts(cleaned);
+
+            const keyParts = [];
+            if (mounts.length > 0) keyParts.push(mounts.join('/'));
+            if (focal) keyParts.push(focal.toLowerCase());
+            if (aperture) keyParts.push(aperture.toUpperCase());
+            if (keyParts.length === 0 && modelCodes.length > 0) keyParts.push(modelCodes.join('/'));
+
+            return keyParts.join(' | ') || cleaned.toUpperCase();
+        }
+
+        function buildLensSpecKey({ focal = '', aperture = '' } = {}) {
+            return [focal.toLowerCase(), aperture.toUpperCase()].filter(Boolean).join(' | ');
+        }
+
+        function scoreLensDisplayLabel(label) {
+            const cleaned = cleanupLensNoise(label);
+            let score = cleaned.length;
+            if (/\bSony\b|\bCanon\b|\bNikon\b|\bTamron\b|\bSigma\b|\bFujifilm\b|\bFujinon\b|\bLumix\b|\bPanasonic\b|\bLeica\b|\bOlympus\b|\bZeiss\b/i.test(cleaned)) score += 20;
+            if (/\([A-Z0-9-]{4,}\)/.test(cleaned)) score += 18;
+            if (/\b(?:SEL\d+[A-Z0-9]+|A\d{3}|SAL\d+[A-Z0-9]+)\b/i.test(cleaned)) score += 12;
+            if (/[\u0000-\u001f\u007f-\u009f]/.test(label)) score -= 40;
+            if (/\bR\d{2,4}\b$/i.test(cleaned)) score -= 10;
+            return score;
+        }
+
+        function choosePreferredLensDisplay(currentLabel, candidateLabel) {
+            if (!currentLabel) return cleanupLensNoise(candidateLabel);
+
+            const currentScore = scoreLensDisplayLabel(currentLabel);
+            const candidateScore = scoreLensDisplayLabel(candidateLabel);
+            if (candidateScore > currentScore) return cleanupLensNoise(candidateLabel);
+
+            return cleanupLensNoise(currentLabel);
+        }
+
+        function scoreLensMeta(meta) {
+            if (!meta) return -1;
+            return (meta.modelCodes?.length || 0) * 100 + (meta.mounts?.length || 0) * 20 + (meta.displayLabel?.length || 0);
+        }
+
+        function mergeLensKeyStats(fromKey, toKey) {
+            if (!fromKey || !toKey || fromKey === toKey || !lensStats[fromKey]) return;
+
+            lensStats[toKey] = (lensStats[toKey] || 0) + (lensStats[fromKey] || 0);
+            delete lensStats[fromKey];
+
+            Object.values(focalLensStats).forEach(lensMap => {
+                if (!lensMap[fromKey]) return;
+                lensMap[toKey] = (lensMap[toKey] || 0) + lensMap[fromKey];
+                delete lensMap[fromKey];
+            });
+
+            if (lensFocalStats[fromKey]) {
+                lensFocalStats[toKey] = lensFocalStats[toKey] || {};
+                Object.entries(lensFocalStats[fromKey]).forEach(([focalKey, count]) => {
+                    lensFocalStats[toKey][focalKey] = (lensFocalStats[toKey][focalKey] || 0) + count;
+                });
+                delete lensFocalStats[fromKey];
+            }
+
+            const sourceLabel = lensSourceByLens[fromKey];
+            if (sourceLabel && !lensSourceByLens[toKey]) {
+                lensSourceByLens[toKey] = sourceLabel;
+            }
+            delete lensSourceByLens[fromKey];
+
+            lensDisplayByKey[toKey] = choosePreferredLensDisplay(lensDisplayByKey[toKey], lensDisplayByKey[fromKey]);
+            delete lensDisplayByKey[fromKey];
+
+            if (lensMetaByKey[fromKey]) {
+                if (!lensMetaByKey[toKey] || scoreLensMeta(lensMetaByKey[fromKey]) > scoreLensMeta(lensMetaByKey[toKey])) {
+                    lensMetaByKey[toKey] = { ...lensMetaByKey[fromKey], canonicalKey: toKey };
+                }
+                delete lensMetaByKey[fromKey];
+            }
+        }
+
+        function resolveLensKey(lensInfo) {
+            const specKey = lensInfo.specKey;
+            const currentMeta = lensMetaByKey[lensInfo.canonicalKey];
+
+            if (currentMeta) {
+                if (scoreLensMeta(lensInfo) > scoreLensMeta(currentMeta)) {
+                    lensMetaByKey[lensInfo.canonicalKey] = { ...lensInfo };
+                }
+                return lensInfo.canonicalKey;
+            }
+
+            if (!specKey) {
+                lensMetaByKey[lensInfo.canonicalKey] = { ...lensInfo };
+                return lensInfo.canonicalKey;
+            }
+
+            const sameSpecEntries = Object.entries(lensMetaByKey).filter(([, meta]) => meta?.specKey === specKey);
+            if (sameSpecEntries.length === 0) {
+                lensMetaByKey[lensInfo.canonicalKey] = { ...lensInfo };
+                return lensInfo.canonicalKey;
+            }
+
+            let bestKey = lensInfo.canonicalKey;
+            let bestMeta = lensInfo;
+            for (const [key, meta] of sameSpecEntries) {
+                if (scoreLensMeta(meta) > scoreLensMeta(bestMeta)) {
+                    bestKey = key;
+                    bestMeta = meta;
+                }
+            }
+
+            if (bestKey === lensInfo.canonicalKey) {
+                lensMetaByKey[lensInfo.canonicalKey] = { ...lensInfo };
+                sameSpecEntries.forEach(([key]) => mergeLensKeyStats(key, lensInfo.canonicalKey));
+                return lensInfo.canonicalKey;
+            }
+
+            lensMetaByKey[bestKey] = scoreLensMeta(lensInfo) > scoreLensMeta(bestMeta)
+                ? { ...lensInfo, canonicalKey: bestKey }
+                : bestMeta;
+
+            return bestKey;
+        }
+
+        function normalizeLensInfo(lensInfo) {
+            if (!lensInfo?.label) return null;
+
+            const cleanedLabel = normalizeLensLabel(cleanupLensNoise(lensInfo.label));
+            if (!cleanedLabel) return null;
+
+            const canonicalKey = buildCanonicalLensKey(cleanedLabel);
+            let preferredDisplay = choosePreferredLensDisplay(cleanedLabel, cleanedLabel);
+
+            const mounts = extractLensMountTokens(cleanedLabel);
+            const modelCodes = extractLensModelCodes(cleanedLabel);
+            const { focal, aperture } = extractLensSpecParts(cleanedLabel);
+            const brand = LENS_BRAND_WORDS.find(name => new RegExp(`\\b${name.replace(/\s+/g, '\\s+')}\\b`, 'i').test(cleanedLabel));
+
+            if (!brand && mounts.includes('FE') && modelCodes.some(code => code.startsWith('SEL'))) {
+                const rebuilt = ['Sony', 'FE', focal ? focal.replace(/mm$/i, 'mm') : '', aperture, modelCodes[0] ? `(${modelCodes[0]})` : '']
+                    .filter(Boolean)
+                    .join(' ')
+                    .replace(/\s+\(/g, ' (')
+                    .trim();
+                preferredDisplay = choosePreferredLensDisplay(preferredDisplay, rebuilt);
+            }
+
+            if (!brand && modelCodes.some(code => /^A\d{3}$/i.test(code))) {
+                const rebuilt = [...mounts, focal, aperture, modelCodes[0]].filter(Boolean).join(' ').trim();
+                preferredDisplay = choosePreferredLensDisplay(preferredDisplay, rebuilt);
+            }
+
+            return {
+                ...lensInfo,
+                label: cleanedLabel,
+                canonicalKey,
+                displayLabel: preferredDisplay,
+                mounts,
+                modelCodes,
+                focal,
+                aperture,
+                specKey: buildLensSpecKey({ focal, aperture })
+            };
+        }
+
+        function getLensSpecificationLabel(exifContext) {
             const lensSpecification = EXIF.getTag(exifContext, 'LensSpecification');
             if (Array.isArray(lensSpecification) && lensSpecification.length === 4) {
                 const values = lensSpecification.map(v => Number(formatLensTagValue(v)));
@@ -508,20 +765,39 @@
                     return `${focal} ${aperture}`;
                 }
             }
+            return '';
+        }
 
-            const allTags = EXIF.getAllTags(exifContext) || {};
-            const allTagCandidates = [
-                allTags.LensModel,
-                allTags.Lens,
-                allTags['UndefinedTag:0xA434'],
-                allTags['0xA434']
+        function getLensInfoFromExif(exifContext) {
+            const primaryTagCandidates = [
+                ['LensModel', 'EXIF LensModel'],
+                ['UndefinedTag:0xA434', 'EXIF 0xA434'],
+                ['Lens', 'EXIF Lens'],
+                ['LensInfo', 'EXIF LensInfo'],
+                ['LensType', 'EXIF LensType'],
+                ['LensMake', 'EXIF LensMake']
             ];
-            for (const candidate of allTagCandidates) {
-                const label = formatLensTagValue(candidate);
-                if (label) return label;
+
+            for (const [tagName, sourceLabel] of primaryTagCandidates) {
+                const label = normalizeLensLabel(formatLensTagValue(EXIF.getTag(exifContext, tagName)));
+                if (label) return { label, source: sourceLabel };
             }
 
-            return '';
+            const specLabel = normalizeLensLabel(getLensSpecificationLabel(exifContext));
+            if (specLabel) {
+                return { label: specLabel, source: 'EXIF LensSpecification' };
+            }
+
+            const allTags = EXIF.getAllTags(exifContext) || {};
+            for (const [tagName, rawValue] of Object.entries(allTags)) {
+                if (!/lens|0xA434|maker/i.test(tagName)) continue;
+                const label = normalizeLensLabel(formatLensTagValue(rawValue));
+                if (label) {
+                    return { label, source: `EXIF ${tagName}` };
+                }
+            }
+
+            return null;
         }
 
         function decodeHtmlEntities(text) {
@@ -534,6 +810,25 @@
             const safeEnd = Math.min(file.size, end);
             if (safeEnd <= safeStart) return null;
             return file.slice(safeStart, safeEnd).arrayBuffer();
+        }
+
+        function extractLensCandidatesFromText(source) {
+            const candidates = [];
+            const makerNotePatterns = [
+                /(?:canon|nikon|sony|sigma|tamron|fujinon|fujifilm|lumix|leica|olympus|zuiko|m\.zuiko|voigtlander|tokina|zeiss)[^\r\n<>|]{0,80}?(?:\d{1,3}(?:-\d{1,3})?mm[^\r\n<>|]{0,30})/ig,
+                /(?:rf|ef|ef-s|ef-m|fe|e pz|xf|gf|nikkor|dc|dg|dx|fx)[^\r\n<>|]{0,80}?(?:\d{1,3}(?:-\d{1,3})?mm[^\r\n<>|]{0,30})/ig,
+                /(?:\d{1,3}(?:-\d{1,3})?mm\s+f\/?\d(?:\.\d)?[^\r\n<>|]{0,30})/ig
+            ];
+
+            for (const pattern of makerNotePatterns) {
+                const matches = source.match(pattern) || [];
+                matches.forEach(match => {
+                    const label = normalizeLensLabel(match);
+                    if (label) candidates.push(label);
+                });
+            }
+
+            return [...new Set(candidates)];
         }
 
         async function extractLensLabelFromFile(file) {
@@ -557,9 +852,14 @@
                         for (const pattern of lensXmpPatterns) {
                             const match = source.match(pattern);
                             if (match && match[1]) {
-                                const label = decodeHtmlEntities(match[1]).replace(/\u0000/g, '').trim();
-                                if (label) return label;
+                                const label = normalizeLensLabel(decodeHtmlEntities(match[1]));
+                                if (label) return { label, source: 'XMP LensModel' };
                             }
+                        }
+
+                        const makerCandidates = extractLensCandidatesFromText(source);
+                        if (makerCandidates.length > 0) {
+                            return { label: makerCandidates[0], source: GENERIC_LENS_SOURCE_LABEL };
                         }
                     }
                 }
@@ -567,7 +867,7 @@
                 console.warn('Lens fallback parse failed:', error);
             }
 
-            return '';
+            return null;
         }
 
         function getMeteringModeString(value) {
@@ -790,14 +1090,19 @@
                         }
 
                         // 6. 鏡頭型號 (Lens Model)
-                        const lens = getLensLabel(this) || await extractLensLabelFromFile(file);
-                        if (lens) {
-                            lensStats[lens] = (lensStats[lens] || 0) + 1;
+                        const rawLensInfo = getLensInfoFromExif(this) || await extractLensLabelFromFile(file);
+                        const lensInfo = normalizeLensInfo(rawLensInfo);
+                        if (lensInfo?.canonicalKey) {
+                            const lensKey = resolveLensKey(lensInfo);
+                            lensStats[lensKey] = (lensStats[lensKey] || 0) + 1;
+                            lensSourceStats[lensInfo.source] = (lensSourceStats[lensInfo.source] || 0) + 1;
+                            if (!lensSourceByLens[lensKey]) lensSourceByLens[lensKey] = lensInfo.source;
+                            lensDisplayByKey[lensKey] = choosePreferredLensDisplay(lensDisplayByKey[lensKey], lensInfo.displayLabel);
                             if (focalKey) {
                                 focalLensStats[focalKey] = focalLensStats[focalKey] || {};
-                                focalLensStats[focalKey][lens] = (focalLensStats[focalKey][lens] || 0) + 1;
-                                lensFocalStats[lens] = lensFocalStats[lens] || {};
-                                lensFocalStats[lens][focalKey] = (lensFocalStats[lens][focalKey] || 0) + 1;
+                                focalLensStats[focalKey][lensKey] = (focalLensStats[focalKey][lensKey] || 0) + 1;
+                                lensFocalStats[lensKey] = lensFocalStats[lensKey] || {};
+                                lensFocalStats[lensKey][focalKey] = (lensFocalStats[lensKey][focalKey] || 0) + 1;
                             }
                             hasData = true;
                         }
@@ -857,6 +1162,10 @@
             isoStats = {};     
             focalLensStats = {};
             lensFocalStats = {};
+            lensSourceStats = {};
+            lensSourceByLens = {};
+            lensDisplayByKey = {};
+            lensMetaByKey = {};
             cameraStats = {};    
             lensStats = {};      
             flashStats = {};     
@@ -874,10 +1183,682 @@
             if (topLensEl) topLensEl.innerText = '🔭 --';
             if (lensFocalDetail) lensFocalDetail.innerHTML = '';
             statusDiv.style.color = "#007acc";
+            setExportButtonsDisabled(true);
         }
 
         function logError(msg) {
             errorLog.innerHTML += `<div>${msg}</div>`;
+        }
+
+        function getSortedStatsSnapshot() {
+            const sortedFocalStats = Object.entries(focalStats).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+            const sortedApertureStats = Object.entries(apertureStats).sort((a, b) => parseFloat(a[0].substring(2)) - parseFloat(b[0].substring(2)));
+            const sortedShutterStats = Object.entries(shutterStats).sort((a, b) => {
+                const valA = a[0].startsWith('1/') ? 1 / parseFloat(a[0].substring(2, a[0].length - 1)) : parseFloat(a[0]);
+                const valB = b[0].startsWith('1/') ? 1 / parseFloat(b[0].substring(2, b[0].length - 1)) : parseFloat(b[0]);
+                return valA - valB;
+            });
+            const sortedISOStats = Object.entries(isoStats).sort((a, b) => parseInt(a[0].substring(4)) - parseInt(b[0].substring(4)));
+            const sortedCameraStats = Object.entries(cameraStats).sort((a, b) => b[1] - a[1]);
+            const sortedLensStats = Object.entries(lensStats).sort((a, b) => b[1] - a[1]);
+            const sortedFlashStats = Object.entries(flashStats).sort((a, b) => b[1] - a[1]);
+            const sortedWBStats = Object.entries(wbStats).sort((a, b) => b[1] - a[1]);
+            const sortedMeteringStats = Object.entries(meteringStats).sort((a, b) => b[1] - a[1]);
+
+            return {
+                focal: sortedFocalStats,
+                aperture: sortedApertureStats,
+                shutter: sortedShutterStats,
+                iso: sortedISOStats,
+                camera: sortedCameraStats,
+                lens: sortedLensStats,
+                flash: sortedFlashStats,
+                wb: sortedWBStats,
+                metering: sortedMeteringStats
+            };
+        }
+
+        function getDisplayLabelForSection(sectionKey, label) {
+            return sectionKey === 'lens' ? (lensDisplayByKey[label] || label) : label;
+        }
+
+        function getTopStatLabel(entries, sectionKey = '') {
+            if (!entries.length) return 'N/A';
+            const topEntry = [...entries].sort((a, b) => b[1] - a[1])[0];
+            return getDisplayLabelForSection(sectionKey, topEntry[0]);
+        }
+
+        function wrapCanvasText(ctx, text, maxWidth) {
+            const words = String(text || '').split(/\s+/).filter(Boolean);
+            const lines = [];
+            let current = '';
+
+            if (words.length === 0) return [''];
+
+            words.forEach(word => {
+                const next = current ? `${current} ${word}` : word;
+                if (ctx.measureText(next).width <= maxWidth) {
+                    current = next;
+                    return;
+                }
+
+                if (current) lines.push(current);
+
+                if (ctx.measureText(word).width <= maxWidth) {
+                    current = word;
+                    return;
+                }
+
+                let chunk = '';
+                for (const char of word) {
+                    const maybe = chunk + char;
+                    if (ctx.measureText(maybe).width > maxWidth && chunk) {
+                        lines.push(chunk);
+                        chunk = char;
+                    } else {
+                        chunk = maybe;
+                    }
+                }
+                current = chunk;
+            });
+
+            if (current) lines.push(current);
+            return lines.length ? lines : [''];
+        }
+
+        function drawRoundedRect(ctx, x, y, width, height, radius, fillStyle, strokeStyle = null) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
+            if (strokeStyle) {
+                ctx.strokeStyle = strokeStyle;
+                ctx.stroke();
+            }
+        }
+
+        function getExportEntryHeight(lineCount) {
+            return lineCount * 24 + 58;
+        }
+
+        function getStoryRankingEntryHeight(lineCount) {
+            return 110 + Math.max(0, lineCount - 1) * 28;
+        }
+
+        function setExportButtonsDisabled(disabled) {
+            if (exportImageButton) exportImageButton.disabled = disabled;
+            if (exportSocialButton) exportSocialButton.disabled = disabled;
+            if (exportStoryButton) exportStoryButton.disabled = disabled;
+        }
+
+        function downloadCanvas(canvas, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function drawStoryGradient(ctx, width, height) {
+            const bg = ctx.createLinearGradient(0, 0, width, height);
+            bg.addColorStop(0, '#0f1020');
+            bg.addColorStop(0.45, '#1c1634');
+            bg.addColorStop(1, '#2f1148');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, width, height);
+
+            const orb1 = ctx.createRadialGradient(width * 0.2, height * 0.18, 30, width * 0.2, height * 0.18, 340);
+            orb1.addColorStop(0, 'rgba(0,180,204,0.35)');
+            orb1.addColorStop(1, 'rgba(0,180,204,0)');
+            ctx.fillStyle = orb1;
+            ctx.fillRect(0, 0, width, height);
+
+            const orb2 = ctx.createRadialGradient(width * 0.82, height * 0.28, 20, width * 0.82, height * 0.28, 320);
+            orb2.addColorStop(0, 'rgba(167,139,250,0.34)');
+            orb2.addColorStop(1, 'rgba(167,139,250,0)');
+            ctx.fillStyle = orb2;
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        function getSocialListEntryHeight(lineCount) {
+            return 84 + Math.max(0, lineCount - 1) * 28;
+        }
+
+        async function exportSocialRecapImage() {
+            if (validPhotos === 0) return;
+
+            const previousText = exportSocialButton?.innerText || '';
+            setExportButtonsDisabled(true);
+            if (exportSocialButton) exportSocialButton.innerText = '⏳ 產生社群版中...';
+
+            try {
+                const statsSnapshot = getSortedStatsSnapshot();
+                const topFocal = getTopStatLabel(statsSnapshot.focal, 'focal');
+                const topLens = getTopStatLabel(statsSnapshot.lens, 'lens');
+                const topCamera = getTopStatLabel(statsSnapshot.camera, 'camera');
+                const topAperture = getTopStatLabel(statsSnapshot.aperture, 'aperture');
+                const topShutter = getTopStatLabel(statsSnapshot.shutter, 'shutter');
+                const topISO = getTopStatLabel(statsSnapshot.iso, 'iso');
+
+                const socialSections = [
+                    { title: '焦段 Top 5', key: 'focal', color: '#00d4ff' },
+                    { title: '鏡頭 Top 5', key: 'lens', color: '#a78bfa' },
+                    { title: '曝光偏好', key: 'aperture', color: '#ffb347' },
+                    { title: 'ISO Top 5', key: 'iso', color: '#ff7ad9' }
+                ];
+
+                const summaryItems = [
+                    { label: '最愛焦段', value: topFocal, accent: '#00d4ff' },
+                    { label: '最常用鏡頭', value: topLens, accent: '#a78bfa' },
+                    { label: '最常用機身', value: topCamera, accent: '#67e8f9' },
+                    { label: '曝光習慣', value: `${topAperture} · ${topShutter}`, accent: '#ffb347' },
+                    { label: '主要 ISO', value: topISO, accent: '#ff7ad9' }
+                ];
+
+                const width = 1080;
+                const padding = 64;
+                const colGap = 24;
+                const rowGap = 24;
+                const summaryHeight = 88;
+                const colWidth = (width - padding * 2 - colGap) / 2;
+
+                const measureCanvas = document.createElement('canvas');
+                const measureCtx = measureCanvas.getContext('2d');
+
+                measureCtx.font = '500 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const heroLines = wrapCanvasText(measureCtx, `你最常使用 ${topLens}，並以 ${topISO} 與 ${topCamera} 完成這次拍攝。`, width - padding * 2 - 56).slice(0, 3);
+                const heroHeight = 214 + Math.max(0, heroLines.length - 1) * 36;
+
+                const summaryStartY = 190 + heroHeight + 22;
+                const summaryRows = Math.ceil(summaryItems.length / 2);
+                const summaryBlockHeight = summaryRows * summaryHeight + (summaryRows - 1) * 16;
+                const sectionsStartY = summaryStartY + summaryBlockHeight + 28;
+
+                measureCtx.font = '600 20px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const sectionLayouts = socialSections.map(section => {
+                    const entries = statsSnapshot[section.key].slice(0, 5).map(([label, count], index) => {
+                        const display = getDisplayLabelForSection(section.key, label);
+                        const lines = wrapCanvasText(measureCtx, display, colWidth - 132).slice(0, 2);
+                        return { index, count, lines, height: getSocialListEntryHeight(lines.length) };
+                    });
+                    return {
+                        ...section,
+                        entries,
+                        height: 72 + entries.reduce((sum, entry) => sum + entry.height, 0) + 16
+                    };
+                });
+
+                const rowHeights = [];
+                for (let i = 0; i < sectionLayouts.length; i += 2) {
+                    rowHeights.push(Math.max(sectionLayouts[i]?.height || 0, sectionLayouts[i + 1]?.height || 0));
+                }
+                const rowOffsets = [];
+                let accumulatedY = sectionsStartY;
+                rowHeights.forEach((rowHeight, index) => {
+                    rowOffsets[index] = accumulatedY;
+                    accumulatedY += rowHeight + rowGap;
+                });
+
+                measureCtx.font = '500 22px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const socialRecapLines = wrapCanvasText(measureCtx, `你偏好 ${topFocal}，常用 ${topLens}。曝光上多使用 ${topAperture}、${topShutter}，整體以 ${topISO} 為主。`, width - padding * 2 - 44).slice(0, 3);
+                const footerY = accumulatedY + 2;
+                const footerHeight = 98 + Math.max(0, socialRecapLines.length - 1) * 30;
+                const height = Math.max(1500, footerY + footerHeight + 64);
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = `${width}px`;
+                canvas.style.height = `${height}px`;
+                ctx.scale(dpr, dpr);
+
+                drawStoryGradient(ctx, width, height);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 54px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('攝影 RECAP', padding, 112);
+                ctx.font = '400 24px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.72)';
+                ctx.fillText(`社群分享版｜本次分析 ${validPhotos} 張照片`, padding, 150);
+
+                drawRoundedRect(ctx, padding, 190, width - padding * 2, heroHeight, 34, 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.1)');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 32px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('這次拍攝的主旋律', padding + 28, 238);
+                ctx.font = '800 92px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText(topFocal, padding + 28, 342);
+                ctx.font = '500 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = '#cfd8ef';
+                heroLines.forEach((line, idx) => {
+                    ctx.fillText(line, padding + 28, 378 + idx * 32);
+                });
+
+                summaryItems.forEach((item, index) => {
+                    const x = padding + (index % 2) * (colWidth + colGap);
+                    const y = summaryStartY + Math.floor(index / 2) * (summaryHeight + 16);
+                    const widthUsed = index === summaryItems.length - 1 && summaryItems.length % 2 === 1 ? (width - padding * 2) : colWidth;
+                    drawRoundedRect(ctx, x, y, widthUsed, summaryHeight, 24, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.08)');
+                    ctx.fillStyle = item.accent;
+                    ctx.font = '600 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillText(item.label, x + 20, y + 30);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '700 28px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    wrapCanvasText(ctx, item.value, widthUsed - 40).slice(0, 2).forEach((line, idx) => {
+                        ctx.fillText(line, x + 20, y + 62 + idx * 30);
+                    });
+                });
+
+                sectionLayouts.forEach((section, index) => {
+                    const col = index % 2;
+                    const row = Math.floor(index / 2);
+                    const x = padding + col * (colWidth + colGap);
+                    const y = rowOffsets[row];
+                    const maxCount = Math.max(...section.entries.map(entry => entry.count), 1);
+
+                    drawRoundedRect(ctx, x, y, colWidth, section.height, 28, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.08)');
+                    ctx.fillStyle = section.color;
+                    ctx.font = '700 24px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillText(section.title, x + 22, y + 38);
+
+                    let rowY = y + 74;
+                    section.entries.forEach(entry => {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '700 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillText(`#${entry.index + 1}`, x + 22, rowY + 16);
+                        ctx.font = '600 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        entry.lines.forEach((line, idx) => ctx.fillText(line, x + 72, rowY + 16 + idx * 24));
+                        const barY = rowY + 28 + Math.max(0, entry.lines.length - 1) * 24;
+                        const barX = x + 72;
+                        const barWidth = colWidth - 120;
+                        drawRoundedRect(ctx, barX, barY, barWidth, 14, 7, 'rgba(255,255,255,0.1)');
+                        drawRoundedRect(ctx, barX, barY, Math.max(8, barWidth * (entry.count / maxCount)), 14, 7, section.color);
+                        ctx.textAlign = 'right';
+                        ctx.fillStyle = section.color;
+                        ctx.font = '700 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillText(String(entry.count), x + colWidth - 20, rowY + 14);
+                        ctx.textAlign = 'left';
+                        rowY += entry.height;
+                    });
+                });
+
+                drawRoundedRect(ctx, padding, footerY, width - padding * 2, footerHeight, 28, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.08)');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 24px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('攝影風格速記', padding + 22, footerY + 38);
+                ctx.font = '500 22px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = '#d6def7';
+                socialRecapLines.forEach((line, idx) => ctx.fillText(line, padding + 22, footerY + 78 + idx * 30));
+
+                ctx.fillStyle = 'rgba(255,255,255,0.52)';
+                ctx.font = '400 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText(`產生時間：${new Date().toLocaleString('zh-TW')}`, padding, height - 26);
+
+                const timestamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
+                downloadCanvas(canvas, `lens-analyzer-social-${timestamp}.png`);
+            } finally {
+                setExportButtonsDisabled(false);
+                if (exportSocialButton) exportSocialButton.innerText = previousText;
+            }
+        }
+
+        async function exportStoryRecapImage() {
+            if (validPhotos === 0) return;
+
+            const previousText = exportStoryButton?.innerText || '';
+            setExportButtonsDisabled(true);
+            if (exportStoryButton) exportStoryButton.innerText = '⏳ 產生限動版中...';
+
+            try {
+                const statsSnapshot = getSortedStatsSnapshot();
+                const topFocal = getTopStatLabel(statsSnapshot.focal, 'focal');
+                const topLens = getTopStatLabel(statsSnapshot.lens, 'lens');
+                const topCamera = getTopStatLabel(statsSnapshot.camera, 'camera');
+                const topAperture = getTopStatLabel(statsSnapshot.aperture, 'aperture');
+                const topShutter = getTopStatLabel(statsSnapshot.shutter, 'shutter');
+                const topISO = getTopStatLabel(statsSnapshot.iso, 'iso');
+
+                const storyCards = [
+                    { label: '最愛焦段', value: topFocal, accent: '#00d4ff' },
+                    { label: '最常用鏡頭', value: topLens, accent: '#a78bfa' },
+                    { label: '最常用機身', value: topCamera, accent: '#67e8f9' },
+                    { label: '曝光習慣', value: `${topAperture} · ${topShutter}`, accent: '#ffb347' }
+                ];
+
+                const highlightSections = [
+                    { title: '焦段 Top 3', key: 'focal', color: '#00d4ff' },
+                    { title: '鏡頭 Top 3', key: 'lens', color: '#a78bfa' },
+                    { title: 'ISO Top 3', key: 'iso', color: '#ff7ad9' }
+                ];
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const width = 1080;
+                const height = 1920;
+                const padding = 72;
+
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = `${width}px`;
+                canvas.style.height = `${height}px`;
+                ctx.scale(dpr, dpr);
+
+                drawStoryGradient(ctx, width, height);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 64px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('攝影 RECAP', padding, 150);
+                ctx.font = '400 28px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = 'rgba(255,255,255,0.72)';
+                ctx.fillText(`你這次一共分析了 ${validPhotos} 張照片`, padding, 198);
+
+                ctx.font = '500 30px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const heroLines = wrapCanvasText(ctx, `常和 ${topLens} 搭配出現`, width - padding * 2 - 68).slice(0, 3);
+                const heroHeight = 210 + Math.max(0, heroLines.length - 1) * 34;
+
+                const cardGap = 20;
+                const smallCardWidth = (width - padding * 2 - cardGap) / 2;
+                ctx.font = '700 38px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const storyCardLayouts = storyCards.map(card => {
+                    const lines = wrapCanvasText(ctx, card.value, smallCardWidth - 48).slice(0, 3);
+                    return { ...card, lines, height: 118 + Math.max(0, lines.length - 1) * 42 };
+                });
+                const firstRowHeight = Math.max(storyCardLayouts[0].height, storyCardLayouts[1].height);
+                const secondRowHeight = Math.max(storyCardLayouts[2].height, storyCardLayouts[3].height);
+                const statsGridHeight = firstRowHeight + secondRowHeight + 28;
+
+                ctx.font = '600 22px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const rankingSectionLayouts = highlightSections.map(section => {
+                    const entries = statsSnapshot[section.key].slice(0, 3).map(([label, count], index) => {
+                        const display = getDisplayLabelForSection(section.key, label);
+                        const labelLines = wrapCanvasText(ctx, display, width - padding * 2 - 170).slice(0, 2);
+                        const heightNeeded = getStoryRankingEntryHeight(labelLines.length);
+                        return { label, count, index, labelLines, heightNeeded };
+                    });
+                    const sectionHeight = 88 + entries.reduce((sum, entry) => sum + entry.heightNeeded, 0);
+                    return { ...section, entries, sectionHeight };
+                });
+                const rankingHeight = 74 + rankingSectionLayouts.reduce((sum, section) => sum + section.sectionHeight, 0) + 18;
+
+                ctx.font = '500 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                const recapText = `你偏好 ${topFocal}、常用 ${topAperture} 與 ${topShutter}，主要以 ${topISO} 搭配 ${topCamera} 進行拍攝。`;
+                const recapLines = wrapCanvasText(ctx, recapText, width - padding * 2 - 56).slice(0, 4);
+                const recapHeight = 118 + Math.max(0, recapLines.length - 1) * 34;
+
+                const contentStartY = 250;
+                const gap = 34;
+                const naturalContentHeight = heroHeight + gap + statsGridHeight + gap + rankingHeight + gap + recapHeight;
+                const contentEndLimit = height - 110;
+                const availableHeight = contentEndLimit - contentStartY;
+                const contentScale = Math.min(1, availableHeight / naturalContentHeight);
+
+                ctx.save();
+                ctx.translate(0, contentStartY);
+                ctx.scale(contentScale, contentScale);
+
+                let flowY = 0;
+
+                drawRoundedRect(ctx, padding, flowY, width - padding * 2, heroHeight, 34, 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.1)');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '600 30px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('你的拍攝主旋律', padding + 34, flowY + 52);
+                ctx.font = '800 122px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText(topFocal, padding + 34, flowY + 168);
+                ctx.font = '500 30px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = '#b8c2d9';
+                heroLines.forEach((line, idx) => ctx.fillText(line, padding + 34, flowY + 202 + idx * 36));
+
+                flowY += heroHeight + gap;
+
+                storyCardLayouts.forEach((card, index) => {
+                    const col = index % 2;
+                    const row = Math.floor(index / 2);
+                    const rowBaseY = flowY + (row === 0 ? 0 : firstRowHeight + 28);
+                    const x = padding + col * (smallCardWidth + cardGap);
+                    const y = rowBaseY;
+                    drawRoundedRect(ctx, x, y, smallCardWidth, card.height, 28, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.09)');
+                    ctx.fillStyle = card.accent;
+                    ctx.font = '600 24px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillText(card.label, x + 24, y + 42);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '700 38px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    card.lines.forEach((line, idx) => ctx.fillText(line, x + 24, y + 92 + idx * 42));
+                });
+
+                flowY += statsGridHeight + gap;
+
+                drawRoundedRect(ctx, padding, flowY, width - padding * 2, rankingHeight, 34, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.09)');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 34px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('你的拍攝偏好排行榜', padding + 30, flowY + 52);
+
+                let sectionY = flowY + 106;
+                rankingSectionLayouts.forEach(section => {
+                    ctx.fillStyle = section.color;
+                    ctx.font = '700 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillText(section.title, padding + 30, sectionY);
+                    sectionY += 56;
+
+                    const maxCount = Math.max(...section.entries.map(entry => entry.count), 1);
+                    section.entries.forEach(entry => {
+                        const rowY = sectionY + 26;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '600 22px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillText(`#${entry.index + 1}`, padding + 30, rowY);
+                        entry.labelLines.forEach((line, idx) => {
+                            ctx.fillText(line, padding + 90, rowY + idx * 28);
+                        });
+                        const barY = rowY + 28 + Math.max(0, entry.labelLines.length - 1) * 28;
+                        const barX = padding + 90;
+                        const barWidth = width - padding * 2 - 180;
+                        drawRoundedRect(ctx, barX, barY, barWidth, 16, 8, 'rgba(255,255,255,0.1)');
+                        drawRoundedRect(ctx, barX, barY, Math.max(10, barWidth * (entry.count / maxCount)), 16, 8, section.color);
+                        ctx.textAlign = 'right';
+                        ctx.fillStyle = section.color;
+                        ctx.font = '700 22px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillText(String(entry.count), width - padding - 24, rowY + 14);
+                        ctx.textAlign = 'left';
+                        sectionY += entry.heightNeeded;
+                    });
+
+                    sectionY += 14;
+                });
+
+                flowY += rankingHeight + gap;
+
+                drawRoundedRect(ctx, padding, flowY, width - padding * 2, recapHeight, 32, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.08)');
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 28px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('攝影風格速記', padding + 28, flowY + 54);
+                ctx.font = '500 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = '#dbe4ff';
+                recapLines.forEach((line, idx) => {
+                    ctx.fillText(line, padding + 28, flowY + 102 + idx * 34);
+                });
+
+                ctx.restore();
+
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.font = '400 20px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText(`產生時間：${new Date().toLocaleString('zh-TW')}`, padding, height - 56);
+
+                const timestamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
+                downloadCanvas(canvas, `lens-analyzer-story-${timestamp}.png`);
+            } finally {
+                setExportButtonsDisabled(false);
+                if (exportStoryButton) exportStoryButton.innerText = previousText;
+            }
+        }
+
+        async function exportStatsAsImage() {
+            if (validPhotos === 0) return;
+
+            setExportButtonsDisabled(true);
+            const previousText = exportImageButton.innerText;
+            exportImageButton.innerText = '⏳ 產生圖片中...';
+
+            try {
+                const statsSnapshot = getSortedStatsSnapshot();
+                const summaryItems = [
+                    ['成功讀取', String(validPhotos)],
+                    ['最愛焦段', getTopStatLabel(statsSnapshot.focal, 'focal')],
+                    ['最愛光圈', getTopStatLabel(statsSnapshot.aperture, 'aperture')],
+                    ['最愛快門', getTopStatLabel(statsSnapshot.shutter, 'shutter')],
+                    ['最愛 ISO', getTopStatLabel(statsSnapshot.iso, 'iso')],
+                    ['最愛機型', getTopStatLabel(statsSnapshot.camera, 'camera')],
+                    ['最常用鏡頭', getTopStatLabel(statsSnapshot.lens, 'lens')]
+                ];
+
+                const sectionConfigs = [
+                    { key: 'focal', title: '🔭 焦段使用頻率', color: '#00b4cc' },
+                    { key: 'aperture', title: '💧 光圈使用頻率', color: '#ffb347' },
+                    { key: 'shutter', title: '💨 快門使用頻率', color: '#5cb85c' },
+                    { key: 'iso', title: '💡 ISO 使用頻率', color: '#cc66cc' },
+                    { key: 'camera', title: '📷 機型使用頻率', color: '#58c7da' },
+                    { key: 'lens', title: '🔭 鏡頭使用頻率', color: '#a78bfa' },
+                    { key: 'flash', title: '⚡ 閃光燈使用頻率', color: '#f0ad4e' },
+                    { key: 'wb', title: '☀️ 白平衡使用頻率', color: '#a6e22e' },
+                    { key: 'metering', title: '🎯 測光模式使用頻率', color: '#ff5988' }
+                ];
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const width = 1600;
+                const padding = 48;
+                const colGap = 28;
+                const rowGap = 28;
+                const summaryHeight = 220;
+                const cardWidth = Math.floor((width - padding * 2 - colGap) / 2);
+                const topEntriesLimit = 5;
+
+                ctx.font = '600 28px "Segoe UI", "Microsoft JhengHei", sans-serif';
+
+                const sectionHeights = sectionConfigs.map(({ key, title }) => {
+                    const entries = statsSnapshot[key].slice(0, topEntriesLimit);
+                    let sectionHeight = 76;
+                    entries.forEach(([label]) => {
+                        const display = getDisplayLabelForSection(key, label);
+                        const lines = wrapCanvasText(ctx, display, cardWidth - 160);
+                        sectionHeight += getExportEntryHeight(lines.length);
+                    });
+                    if (entries.length === 0) sectionHeight += 56;
+                    sectionHeight += 12;
+                    return Math.max(sectionHeight, 236);
+                });
+
+                let totalHeight = padding + 110 + summaryHeight + rowGap;
+                for (let i = 0; i < sectionConfigs.length; i += 2) {
+                    totalHeight += Math.max(sectionHeights[i], sectionHeights[i + 1] || 0) + rowGap;
+                }
+                totalHeight += 40;
+
+                canvas.width = width * dpr;
+                canvas.height = totalHeight * dpr;
+                canvas.style.width = `${width}px`;
+                canvas.style.height = `${totalHeight}px`;
+                ctx.scale(dpr, dpr);
+
+                const bgGradient = ctx.createLinearGradient(0, 0, width, totalHeight);
+                bgGradient.addColorStop(0, '#111315');
+                bgGradient.addColorStop(1, '#1b1530');
+                ctx.fillStyle = bgGradient;
+                ctx.fillRect(0, 0, width, totalHeight);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 42px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillText('📸 攝影參數統計報表', padding, padding + 18);
+                ctx.font = '400 20px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = '#bfc7d5';
+                ctx.fillText(`匯出時間：${new Date().toLocaleString('zh-TW')}`, padding, padding + 56);
+
+                drawRoundedRect(ctx, padding, padding + 84, width - padding * 2, summaryHeight, 24, 'rgba(255,255,255,0.06)', 'rgba(255,255,255,0.08)');
+                ctx.font = '700 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('總覽', padding + 24, padding + 120);
+
+                const summaryCols = 4;
+                const summaryCellWidth = (width - padding * 2 - 48) / summaryCols;
+                summaryItems.forEach(([label, value], index) => {
+                    const row = Math.floor(index / summaryCols);
+                    const col = index % summaryCols;
+                    const x = padding + 24 + col * summaryCellWidth;
+                    const y = padding + 140 + row * 74;
+                    ctx.font = '400 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillStyle = '#96a0b5';
+                    ctx.fillText(label, x, y);
+                    ctx.font = '700 26px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    const lines = wrapCanvasText(ctx, value, summaryCellWidth - 18);
+                    lines.slice(0, 2).forEach((line, lineIndex) => {
+                        ctx.fillText(line, x, y + 32 + lineIndex * 28);
+                    });
+                });
+
+                let currentY = padding + 84 + summaryHeight + rowGap;
+                sectionConfigs.forEach((section, index) => {
+                    const col = index % 2;
+                    const x = padding + col * (cardWidth + colGap);
+                    if (col === 0 && index > 0) {
+                        currentY += Math.max(sectionHeights[index - 2], sectionHeights[index - 1]) + rowGap;
+                    }
+                    const y = currentY;
+                    const sectionHeight = sectionHeights[index];
+                    const entries = statsSnapshot[section.key].slice(0, topEntriesLimit);
+                    const maxCount = Math.max(...entries.map(([, count]) => count), 1);
+
+                    drawRoundedRect(ctx, x, y, cardWidth, sectionHeight, 22, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.08)');
+                    ctx.font = '700 24px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(section.title, x + 22, y + 34);
+
+                    let rowY = y + 64;
+                    if (entries.length === 0) {
+                        ctx.font = '400 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillStyle = '#98a3b8';
+                        ctx.fillText('沒有可匯出的統計資料', x + 22, rowY + 24);
+                        return;
+                    }
+
+                    entries.forEach(([label, count]) => {
+                        const display = getDisplayLabelForSection(section.key, label);
+                        ctx.font = '600 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillStyle = '#eef3ff';
+                        const lines = wrapCanvasText(ctx, display, cardWidth - 160);
+                        lines.forEach((line, lineIndex) => {
+                            ctx.fillText(line, x + 22, rowY + lineIndex * 24);
+                        });
+
+                        const barY = rowY + lines.length * 24 + 10;
+                        const barWidth = cardWidth - 150;
+                        drawRoundedRect(ctx, x + 22, barY, barWidth, 16, 8, 'rgba(255,255,255,0.08)');
+                        drawRoundedRect(ctx, x + 22, barY, Math.max(8, barWidth * (count / maxCount)), 16, 8, section.color);
+                        ctx.font = '700 18px "Segoe UI", "Microsoft JhengHei", sans-serif';
+                        ctx.fillStyle = section.color;
+                        ctx.textAlign = 'right';
+                        ctx.fillText(String(count), x + cardWidth - 22, barY + 14);
+                        ctx.textAlign = 'left';
+
+                        rowY += getExportEntryHeight(lines.length);
+                    });
+                });
+
+                const timestamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16);
+                downloadCanvas(canvas, `lens-analyzer-report-${timestamp}.png`);
+            } finally {
+                setExportButtonsDisabled(false);
+                exportImageButton.innerText = previousText;
+            }
         }
 
         // --- 繪製圖表 (已更新：繪製後預設顯示第一個 Tab) ---
@@ -933,22 +1914,35 @@
             const sortedLensStats = Object.entries(lensStats).sort((a, b) => b[1] - a[1]);
             let maxLensCount = 0;
             let topLens = "N/A";
-            sortedLensStats.forEach(([f, c]) => { if (c > maxLensCount) { maxLensCount = c; topLens = f; } });
+            sortedLensStats.forEach(([f, c]) => { if (c > maxLensCount) { maxLensCount = c; topLens = lensDisplayByKey[f] || f; } });
             document.getElementById('top-lens').innerText = `🔭 ${topLens}`;
 
             const lensTags = document.getElementById('lens-tags');
             lensTags.innerHTML = '';
             if (sortedLensStats.length === 0) {
-                lensTags.innerHTML = '<span class="tag-chip empty">未偵測到鏡頭 EXIF / XMP</span>';
+                lensTags.innerHTML = '<span class="tag-chip empty">未偵測到鏡頭 EXIF / XMP / 相機私有欄位字串</span>';
             } else {
                 const rankIcons = ['🥇', '🥈', '🥉'];
-                sortedLensStats.slice(0, 3).forEach(([lensName, lensCount], index) => {
+                sortedLensStats.slice(0, 3).forEach(([lensKey, lensCount], index) => {
+                    const lensName = lensDisplayByKey[lensKey] || lensKey;
                     const chip = document.createElement('span');
                     chip.className = 'tag-chip';
                     chip.title = lensName;
+                    const sourceLabel = lensSourceByLens[lensKey] || '未知來源';
                     chip.textContent = `${rankIcons[index] || `#${index + 1}`} ${lensName} × ${lensCount}`;
+                    chip.title = `${lensName}｜來源：${sourceLabel}`;
                     lensTags.appendChild(chip);
                 });
+
+                Object.entries(lensSourceStats)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 2)
+                    .forEach(([sourceLabel, count]) => {
+                        const chip = document.createElement('span');
+                        chip.className = 'tag-chip';
+                        chip.textContent = `來源：${sourceLabel} × ${count}`;
+                        lensTags.appendChild(chip);
+                    });
             }
 
             // 7. Flash
@@ -987,6 +1981,7 @@
             selectedFocalKey = null;
             selectedLensKey = sortedLensStats.length > 0 ? sortedLensStats[0][0] : null;
             renderLensFocalDetail(selectedLensKey);
+            setExportButtonsDisabled(false);
             
             // 預設顯示第一個 Tab (焦段)
             showTab('focal');
@@ -999,7 +1994,8 @@
             const maxCount = lensEntries[0]?.[1] || 1;
             const lensCount = lensEntries.length;
 
-            const detailRows = lensEntries.map(([lensName, count]) => {
+            const detailRows = lensEntries.map(([lensKey, count]) => {
+                const lensName = lensDisplayByKey[lensKey] || lensKey;
                 const percentage = (count / maxCount) * 100;
                 return `
                     <div class="detail-row">
@@ -1033,6 +2029,7 @@
             }
 
             selectedLensKey = lensKey;
+            const displayLensName = lensDisplayByKey[lensKey] || lensKey;
             const focalEntries = Object.entries(lensFocalStats[lensKey]).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
             const maxCount = Math.max(...focalEntries.map(([, count]) => count), 1);
             const focalCount = focalEntries.length;
@@ -1051,7 +2048,7 @@
             }).join('');
 
             lensFocalDetail.innerHTML = `
-                <div class="detail-title">🔭 ${lensKey} 常用焦段</div>
+                <div class="detail-title">🔭 ${displayLensName} 常用焦段</div>
                 <div class="detail-hint">這顆鏡頭共拍攝 ${focalCount} 個焦段，點上方其他鏡頭可切換查看。</div>
                 <div class="detail-list">${detailRows}</div>
             `;
@@ -1077,11 +2074,12 @@
                 const isFocalChart = barClass === 'focal-bar';
                 const isLensChart = barClass === 'lens-bar';
                 const relatedLensCount = isFocalChart && focalLensStats[label] ? Object.keys(focalLensStats[label]).length : 0;
+                const baseLabel = isLensChart ? (lensDisplayByKey[label] || label) : label;
                 const displayLabel = isFocalChart && relatedLensCount > 0
                     ? `${label}<span class="sub-label">${relatedLensCount} 顆鏡頭</span>`
                     : (isLensChart && lensFocalStats[label]
-                        ? `${label}<span class="sub-label">${Object.keys(lensFocalStats[label]).length} 個焦段</span>`
-                        : label);
+                        ? `${baseLabel}<span class="sub-label">${Object.keys(lensFocalStats[label]).length} 個焦段・${lensSourceByLens[label] || '未知來源'}</span>`
+                        : baseLabel);
                 
                 let color;
                 // 根據 barClass 設置顏色以匹配長條圖的漸層
@@ -1099,7 +2097,7 @@
                 }
                 
                 row.innerHTML = `
-                    <div class="${labelClass}" title="${label.replace(/"/g, '&quot;')}">${displayLabel}</div>
+                    <div class="${labelClass}" title="${baseLabel.replace(/"/g, '&quot;')}">${displayLabel}</div>
                     <div class="bar-container">
                         <div class="bar ${barClass}" style="width: ${percentage}%"></div>
                     </div>
@@ -1137,6 +2135,16 @@
                     }
                 }
             });
+        }
+
+        if (exportImageButton) {
+            exportImageButton.addEventListener('click', exportStatsAsImage);
+        }
+        if (exportSocialButton) {
+            exportSocialButton.addEventListener('click', exportSocialRecapImage);
+        }
+        if (exportStoryButton) {
+            exportStoryButton.addEventListener('click', exportStoryRecapImage);
         }
     </script>
 </body>
