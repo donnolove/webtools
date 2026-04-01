@@ -135,6 +135,47 @@
             padding-bottom: 5px;
         }
 
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 20px 15px 20px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 5px;
+        }
+
+        .chart-header .chart-title {
+            margin: 0;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .sort-toggle-button {
+            border: 1px solid #4c566a;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #d8e2ff;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .sort-toggle-button:hover {
+            border-color: #6f8cff;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .sort-toggle-button.active {
+            background: linear-gradient(135deg, rgba(0, 122, 204, 0.9), rgba(111, 66, 193, 0.9));
+            border-color: transparent;
+            color: #ffffff;
+        }
+
         /* 長條圖樣式 */
         .chart-row {
             display: flex;
@@ -422,6 +463,19 @@
             wb: document.getElementById('wb-tab'),
             metering: document.getElementById('metering-tab')
         };
+        const chartBarClasses = {
+            focal: 'focal-bar',
+            aperture: 'aperture-bar',
+            shutter: 'shutter-bar',
+            iso: 'iso-bar',
+            camera: 'camera-bar',
+            lens: 'lens-bar',
+            flash: 'flash-bar',
+            wb: 'wb-bar',
+            metering: 'metering-bar'
+        };
+        const chartSortStates = Object.fromEntries(Object.keys(chartAreas).map(key => [key, 'default']));
+        const sortToggleButtons = {};
 
         let focalStats = {};
         let apertureStats = {};
@@ -459,6 +513,36 @@
         const GENERIC_LENS_SOURCE_LABEL = '可能來自相機私有欄位';
         const LENS_BRAND_WORDS = ['Sony', 'Canon', 'Nikon', 'Tamron', 'Sigma', 'Fujifilm', 'Fujinon', 'Lumix', 'Panasonic', 'Leica', 'Olympus', 'OM System', 'Zeiss', 'Voigtlander', 'Tokina', 'Samyang', 'Rokinon', 'Viltrox', 'TTArtisan', '7Artisans'];
 
+        function createSortToggleButtons() {
+            Object.entries(tabContents).forEach(([sectionKey, tabContent]) => {
+                const titleEl = tabContent?.querySelector('.chart-title');
+                if (!titleEl || titleEl.parentElement?.classList.contains('chart-header')) return;
+
+                const header = document.createElement('div');
+                header.className = 'chart-header';
+                titleEl.parentNode.insertBefore(header, titleEl);
+                header.appendChild(titleEl);
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'sort-toggle-button';
+                button.dataset.sectionKey = sectionKey;
+                button.addEventListener('click', () => toggleChartSort(sectionKey));
+                header.appendChild(button);
+                sortToggleButtons[sectionKey] = button;
+            });
+
+            updateSortToggleButtons();
+        }
+
+        function updateSortToggleButtons() {
+            Object.entries(sortToggleButtons).forEach(([sectionKey, button]) => {
+                const isFrequency = chartSortStates[sectionKey] === 'frequency';
+                button.classList.toggle('active', isFrequency);
+                button.innerText = isFrequency ? '\u6062\u5fa9\u9810\u8a2d\u6392\u5e8f' : '\u4f9d\u983b\u7387\u6392\u5e8f';
+            });
+        }
+
         // --- Tab 切換邏輯 ---
         window.showTab = function(tabId) {
             // 隱藏所有 Tab 內容
@@ -473,6 +557,8 @@
         }
 
         // 檢查 EXIF 庫是否載入
+        createSortToggleButtons();
+
         window.onload = function() {
             if (typeof EXIF !== 'undefined') {
                 isLibraryLoaded = true;
@@ -1174,6 +1260,7 @@
             validPhotos = 0;
             selectedFocalKey = null;
             selectedLensKey = null;
+            Object.keys(chartSortStates).forEach(key => chartSortStates[key] = 'default');
             resultsDiv.style.display = 'none';
             Object.values(chartAreas).forEach(area => area.innerHTML = ''); // 清空所有圖表區
             errorLog.innerHTML = '';
@@ -1184,26 +1271,104 @@
             if (lensFocalDetail) lensFocalDetail.innerHTML = '';
             statusDiv.style.color = "#007acc";
             setExportButtonsDisabled(true);
+            updateSortToggleButtons();
         }
 
         function logError(msg) {
             errorLog.innerHTML += `<div>${msg}</div>`;
         }
 
-        function getSortedStatsSnapshot() {
-            const sortedFocalStats = Object.entries(focalStats).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-            const sortedApertureStats = Object.entries(apertureStats).sort((a, b) => parseFloat(a[0].substring(2)) - parseFloat(b[0].substring(2)));
-            const sortedShutterStats = Object.entries(shutterStats).sort((a, b) => {
-                const valA = a[0].startsWith('1/') ? 1 / parseFloat(a[0].substring(2, a[0].length - 1)) : parseFloat(a[0]);
-                const valB = b[0].startsWith('1/') ? 1 / parseFloat(b[0].substring(2, b[0].length - 1)) : parseFloat(b[0]);
-                return valA - valB;
+        function compareStatLabels(sectionKey, labelA, labelB) {
+            switch (sectionKey) {
+                case 'focal':
+                    return parseInt(labelA) - parseInt(labelB);
+                case 'aperture':
+                    return parseFloat(labelA.substring(2)) - parseFloat(labelB.substring(2));
+                case 'shutter': {
+                    const valA = labelA.startsWith('1/') ? 1 / parseFloat(labelA.substring(2, labelA.length - 1)) : parseFloat(labelA);
+                    const valB = labelB.startsWith('1/') ? 1 / parseFloat(labelB.substring(2, labelB.length - 1)) : parseFloat(labelB);
+                    return valA - valB;
+                }
+                case 'iso':
+                    return parseInt(labelA.substring(4)) - parseInt(labelB.substring(4));
+                default:
+                    return String(labelA).localeCompare(String(labelB), 'zh-Hant');
+            }
+        }
+
+        function sortStatsByFrequency(statsObject, sectionKey) {
+            return Object.entries(statsObject).sort((a, b) => {
+                if (b[1] !== a[1]) return b[1] - a[1];
+                return compareStatLabels(sectionKey, a[0], b[0]);
             });
-            const sortedISOStats = Object.entries(isoStats).sort((a, b) => parseInt(a[0].substring(4)) - parseInt(b[0].substring(4)));
-            const sortedCameraStats = Object.entries(cameraStats).sort((a, b) => b[1] - a[1]);
-            const sortedLensStats = Object.entries(lensStats).sort((a, b) => b[1] - a[1]);
-            const sortedFlashStats = Object.entries(flashStats).sort((a, b) => b[1] - a[1]);
-            const sortedWBStats = Object.entries(wbStats).sort((a, b) => b[1] - a[1]);
-            const sortedMeteringStats = Object.entries(meteringStats).sort((a, b) => b[1] - a[1]);
+        }
+
+        function getStatsObjectBySection(sectionKey) {
+            switch (sectionKey) {
+                case 'focal': return focalStats;
+                case 'aperture': return apertureStats;
+                case 'shutter': return shutterStats;
+                case 'iso': return isoStats;
+                case 'camera': return cameraStats;
+                case 'lens': return lensStats;
+                case 'flash': return flashStats;
+                case 'wb': return wbStats;
+                case 'metering': return meteringStats;
+                default: return {};
+            }
+        }
+
+        function sortStatsByDefault(statsObject, sectionKey) {
+            const entries = Object.entries(statsObject);
+            switch (sectionKey) {
+                case 'focal':
+                case 'aperture':
+                case 'shutter':
+                case 'iso':
+                    return entries.sort((a, b) => compareStatLabels(sectionKey, a[0], b[0]));
+                default:
+                    return sortStatsByFrequency(statsObject, sectionKey);
+            }
+        }
+
+        function getChartEntries(sectionKey) {
+            const statsObject = getStatsObjectBySection(sectionKey);
+            return chartSortStates[sectionKey] === 'frequency'
+                ? sortStatsByFrequency(statsObject, sectionKey)
+                : sortStatsByDefault(statsObject, sectionKey);
+        }
+
+        function getMaxCountFromStats(statsObject) {
+            const counts = Object.values(statsObject);
+            return counts.length ? Math.max(...counts) : 0;
+        }
+
+        function renderSectionChart(sectionKey) {
+            const entries = getChartEntries(sectionKey);
+            const maxCount = getMaxCountFromStats(getStatsObjectBySection(sectionKey));
+            renderChart(entries, chartAreas[sectionKey], maxCount, chartBarClasses[sectionKey], sectionKey);
+        }
+
+        function toggleChartSort(sectionKey) {
+            chartSortStates[sectionKey] = chartSortStates[sectionKey] === 'frequency' ? 'default' : 'frequency';
+            updateSortToggleButtons();
+            if (sectionKey === 'lens' && (!selectedLensKey || !lensFocalStats[selectedLensKey])) {
+                selectedLensKey = getChartEntries(sectionKey)[0]?.[0] || null;
+            }
+            renderSectionChart(sectionKey);
+            if (sectionKey === 'lens') renderLensFocalDetail(selectedLensKey);
+        }
+
+        function getSortedStatsSnapshot() {
+            const sortedFocalStats = sortStatsByFrequency(focalStats, 'focal');
+            const sortedApertureStats = sortStatsByFrequency(apertureStats, 'aperture');
+            const sortedShutterStats = sortStatsByFrequency(shutterStats, 'shutter');
+            const sortedISOStats = sortStatsByFrequency(isoStats, 'iso');
+            const sortedCameraStats = sortStatsByFrequency(cameraStats, 'camera');
+            const sortedLensStats = sortStatsByFrequency(lensStats, 'lens');
+            const sortedFlashStats = sortStatsByFrequency(flashStats, 'flash');
+            const sortedWBStats = sortStatsByFrequency(wbStats, 'wb');
+            const sortedMeteringStats = sortStatsByFrequency(meteringStats, 'metering');
 
             return {
                 focal: sortedFocalStats,
@@ -1226,6 +1391,10 @@
             if (!entries.length) return 'N/A';
             const topEntry = [...entries].sort((a, b) => b[1] - a[1])[0];
             return getDisplayLabelForSection(sectionKey, topEntry[0]);
+        }
+
+        function getTopEntries(entries, limit) {
+            return entries.slice(0, limit);
         }
 
         function wrapCanvasText(ctx, text, maxWidth) {
@@ -1349,10 +1518,10 @@
                 const topISO = getTopStatLabel(statsSnapshot.iso, 'iso');
 
                 const socialSections = [
-                    { title: '焦段 Top 5', key: 'focal', color: '#00d4ff' },
-                    { title: '鏡頭 Top 5', key: 'lens', color: '#a78bfa' },
-                    { title: '曝光偏好', key: 'aperture', color: '#ffb347' },
-                    { title: 'ISO Top 5', key: 'iso', color: '#ff7ad9' }
+                    { title: '焦段 Top 5', key: 'focal', color: '#00d4ff', limit: 5 },
+                    { title: '鏡頭 Top 5', key: 'lens', color: '#a78bfa', limit: 5 },
+                    { title: '光圈 Top 5', key: 'aperture', color: '#ffb347', limit: 5 },
+                    { title: 'ISO Top 5', key: 'iso', color: '#ff7ad9', limit: 5 }
                 ];
 
                 const summaryItems = [
@@ -1384,7 +1553,7 @@
 
                 measureCtx.font = '600 20px "Segoe UI", "Microsoft JhengHei", sans-serif';
                 const sectionLayouts = socialSections.map(section => {
-                    const entries = statsSnapshot[section.key].slice(0, 5).map(([label, count], index) => {
+                    const entries = getTopEntries(statsSnapshot[section.key], section.limit).map(([label, count], index) => {
                         const display = getDisplayLabelForSection(section.key, label);
                         const lines = wrapCanvasText(measureCtx, display, colWidth - 132).slice(0, 2);
                         return { index, count, lines, height: getSocialListEntryHeight(lines.length) };
@@ -1535,9 +1704,10 @@
                 ];
 
                 const highlightSections = [
-                    { title: '焦段 Top 3', key: 'focal', color: '#00d4ff' },
-                    { title: '鏡頭 Top 3', key: 'lens', color: '#a78bfa' },
-                    { title: 'ISO Top 3', key: 'iso', color: '#ff7ad9' }
+                    { title: '焦段 Top 3', key: 'focal', color: '#00d4ff', limit: 3 },
+                    { title: '鏡頭 Top 3', key: 'lens', color: '#a78bfa', limit: 3 },
+                    { title: '光圈 Top 3', key: 'aperture', color: '#ffb347', limit: 3 },
+                    { title: 'ISO Top 3', key: 'iso', color: '#ff7ad9', limit: 3 }
                 ];
 
                 const canvas = document.createElement('canvas');
@@ -1579,7 +1749,7 @@
 
                 ctx.font = '600 22px "Segoe UI", "Microsoft JhengHei", sans-serif';
                 const rankingSectionLayouts = highlightSections.map(section => {
-                    const entries = statsSnapshot[section.key].slice(0, 3).map(([label, count], index) => {
+                    const entries = getTopEntries(statsSnapshot[section.key], section.limit).map(([label, count], index) => {
                         const display = getDisplayLabelForSection(section.key, label);
                         const labelLines = wrapCanvasText(ctx, display, width - padding * 2 - 170).slice(0, 2);
                         const heightNeeded = getStoryRankingEntryHeight(labelLines.length);
@@ -1745,7 +1915,7 @@
                 ctx.font = '600 28px "Segoe UI", "Microsoft JhengHei", sans-serif';
 
                 const sectionHeights = sectionConfigs.map(({ key, title }) => {
-                    const entries = statsSnapshot[key].slice(0, topEntriesLimit);
+                    const entries = getTopEntries(statsSnapshot[key], topEntriesLimit);
                     let sectionHeight = 76;
                     entries.forEach(([label]) => {
                         const display = getDisplayLabelForSection(key, label);
@@ -1814,7 +1984,7 @@
                     }
                     const y = currentY;
                     const sectionHeight = sectionHeights[index];
-                    const entries = statsSnapshot[section.key].slice(0, topEntriesLimit);
+                    const entries = getTopEntries(statsSnapshot[section.key], topEntriesLimit);
                     const maxCount = Math.max(...entries.map(([, count]) => count), 1);
 
                     drawRoundedRect(ctx, x, y, cardWidth, sectionHeight, 22, 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.08)');
@@ -1864,73 +2034,41 @@
         // --- 繪製圖表 (已更新：繪製後預設顯示第一個 Tab) ---
         function renderCharts() {
             if (validPhotos === 0) {
-                statusDiv.innerText = "⚠️ 分析完成，但未讀取到任何 EXIF 資訊";
+                statusDiv.innerText = "\u26a0\ufe0f \u5206\u6790\u5b8c\u6210\uff0c\u4f46\u672a\u8b80\u53d6\u5230\u4efb\u4f55 EXIF \u8cc7\u8a0a";
                 return;
             }
 
             resultsDiv.style.display = 'block';
             document.getElementById('total-photos').innerText = validPhotos;
+            updateSortToggleButtons();
 
-            // 1. 焦段 (Focal)
-            const sortedFocalStats = Object.entries(focalStats).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-            let maxFocalCount = 0;
-            let topFocal = "N/A";
-            sortedFocalStats.forEach(([f, c]) => { if (c > maxFocalCount) { maxFocalCount = c; topFocal = f; } });
-            document.getElementById('top-focal').innerText = topFocal;
-            
-            // 2. 光圈 (Aperture)
-            const sortedApertureStats = Object.entries(apertureStats).sort((a, b) => parseFloat(a[0].substring(2)) - parseFloat(b[0].substring(2)));
-            let maxApertureCount = 0;
-            let topAperture = "N/A";
-            sortedApertureStats.forEach(([f, c]) => { if (c > maxApertureCount) { maxApertureCount = c; topAperture = f; } });
-            document.getElementById('top-aperture').innerText = topAperture;
+            const statsSnapshot = getSortedStatsSnapshot();
+            const sortedLensStats = statsSnapshot.lens;
 
-            // 3. 快門 (Shutter)
-            const sortedShutterStats = Object.entries(shutterStats).sort((a, b) => {
-                const valA = a[0].startsWith('1/') ? 1 / parseFloat(a[0].substring(2, a[0].length - 1)) : parseFloat(a[0]);
-                const valB = b[0].startsWith('1/') ? 1 / parseFloat(b[0].substring(2, b[0].length - 1)) : parseFloat(b[0]);
-                return valA - valB;
-            });
-            let maxShutterCount = 0;
-            let topShutter = "N/A";
-            sortedShutterStats.forEach(([f, c]) => { if (c > maxShutterCount) { maxShutterCount = c; topShutter = f; } });
-            document.getElementById('top-shutter').innerText = topShutter;
-            
-            // 4. ISO
-            const sortedISOStats = Object.entries(isoStats).sort((a, b) => parseInt(a[0].substring(4)) - parseInt(b[0].substring(4)));
-            let maxISOCount = 0;
-            let topISO = "N/A";
-            sortedISOStats.forEach(([f, c]) => { if (c > maxISOCount) { maxISOCount = c; topISO = f; } });
-            document.getElementById('top-iso').innerText = topISO;
-            
-            // 5. 相機機型 (Camera)
-            const sortedCameraStats = Object.entries(cameraStats).sort((a, b) => b[1] - a[1]); 
-            let maxCameraCount = 0;
-            let topCamera = "N/A";
-            sortedCameraStats.forEach(([f, c]) => { if (c > maxCameraCount) { maxCameraCount = c; topCamera = f; } });
-            document.getElementById('top-camera').innerText = topCamera;
-            
-            // 6. 鏡頭型號 (Lens)
-            const sortedLensStats = Object.entries(lensStats).sort((a, b) => b[1] - a[1]);
-            let maxLensCount = 0;
-            let topLens = "N/A";
-            sortedLensStats.forEach(([f, c]) => { if (c > maxLensCount) { maxLensCount = c; topLens = lensDisplayByKey[f] || f; } });
-            document.getElementById('top-lens').innerText = `🔭 ${topLens}`;
+            document.getElementById('top-focal').innerText = getTopStatLabel(statsSnapshot.focal, 'focal');
+            document.getElementById('top-aperture').innerText = getTopStatLabel(statsSnapshot.aperture, 'aperture');
+            document.getElementById('top-shutter').innerText = getTopStatLabel(statsSnapshot.shutter, 'shutter');
+            document.getElementById('top-iso').innerText = getTopStatLabel(statsSnapshot.iso, 'iso');
+            document.getElementById('top-camera').innerText = getTopStatLabel(statsSnapshot.camera, 'camera');
+            document.getElementById('top-lens').innerText = `\ud83d\udd2d ${getTopStatLabel(statsSnapshot.lens, 'lens')}`;
+            document.getElementById('top-flash').innerText = getTopStatLabel(statsSnapshot.flash, 'flash');
+            document.getElementById('top-wb').innerText = getTopStatLabel(statsSnapshot.wb, 'wb');
+            document.getElementById('top-metering').innerText = getTopStatLabel(statsSnapshot.metering, 'metering');
 
             const lensTags = document.getElementById('lens-tags');
             lensTags.innerHTML = '';
             if (sortedLensStats.length === 0) {
-                lensTags.innerHTML = '<span class="tag-chip empty">未偵測到鏡頭 EXIF / XMP / 相機私有欄位字串</span>';
+                lensTags.innerHTML = '<span class="tag-chip empty">\u672a\u5075\u6e2c\u5230\u93e1\u982d EXIF / XMP / \u6a94\u540d\u4f86\u6e90\u8cc7\u8a0a</span>';
             } else {
-                const rankIcons = ['🥇', '🥈', '🥉'];
+                const rankIcons = ['\ud83e\udd47', '\ud83e\udd48', '\ud83e\udd49'];
                 sortedLensStats.slice(0, 3).forEach(([lensKey, lensCount], index) => {
                     const lensName = lensDisplayByKey[lensKey] || lensKey;
                     const chip = document.createElement('span');
                     chip.className = 'tag-chip';
                     chip.title = lensName;
-                    const sourceLabel = lensSourceByLens[lensKey] || '未知來源';
-                    chip.textContent = `${rankIcons[index] || `#${index + 1}`} ${lensName} × ${lensCount}`;
-                    chip.title = `${lensName}｜來源：${sourceLabel}`;
+                    const sourceLabel = lensSourceByLens[lensKey] || '\u672a\u77e5\u4f86\u6e90';
+                    chip.textContent = `${rankIcons[index] || `#${index + 1}`} ${lensName} \u00d7 ${lensCount}`;
+                    chip.title = `${lensName}\uff5c\u4f86\u6e90\uff1a${sourceLabel}`;
                     lensTags.appendChild(chip);
                 });
 
@@ -1940,50 +2078,19 @@
                     .forEach(([sourceLabel, count]) => {
                         const chip = document.createElement('span');
                         chip.className = 'tag-chip';
-                        chip.textContent = `來源：${sourceLabel} × ${count}`;
+                        chip.textContent = `\u4f86\u6e90\uff1a${sourceLabel} \u00d7 ${count}`;
                         lensTags.appendChild(chip);
                     });
             }
 
-            // 7. Flash
-            const sortedFlashStats = Object.entries(flashStats).sort((a, b) => b[1] - a[1]); 
-            let maxFlashCount = 0;
-            let topFlash = "N/A";
-            sortedFlashStats.forEach(([f, c]) => { if (c > maxFlashCount) { maxFlashCount = c; topFlash = f; } });
-            document.getElementById('top-flash').innerText = topFlash;
-
-            // 8. White Balance
-            const sortedWBStats = Object.entries(wbStats).sort((a, b) => b[1] - a[1]);
-            let maxWBCount = 0;
-            let topWB = "N/A";
-            sortedWBStats.forEach(([f, c]) => { if (c > maxWBCount) { maxWBCount = c; topWB = f; } });
-            document.getElementById('top-wb').innerText = topWB;
-
-            // 9. Metering Mode
-            const sortedMeteringStats = Object.entries(meteringStats).sort((a, b) => b[1] - a[1]);
-            let maxMeteringCount = 0;
-            let topMetering = "N/A";
-            sortedMeteringStats.forEach(([f, c]) => { if (c > maxMeteringCount) { maxMeteringCount = c; topMetering = f; } });
-            document.getElementById('top-metering').innerText = topMetering;
-
-
-            // 繪製圖表
-            renderChart(sortedFocalStats, chartAreas.focal, maxFocalCount, 'focal-bar');
-            renderChart(sortedApertureStats, chartAreas.aperture, maxApertureCount, 'aperture-bar');
-            renderChart(sortedShutterStats, chartAreas.shutter, maxShutterCount, 'shutter-bar');
-            renderChart(sortedISOStats, chartAreas.iso, maxISOCount, 'iso-bar');
-            renderChart(sortedCameraStats, chartAreas.camera, maxCameraCount, 'camera-bar');
-            renderChart(sortedLensStats, chartAreas.lens, maxLensCount, 'lens-bar');
-            renderChart(sortedFlashStats, chartAreas.flash, maxFlashCount, 'flash-bar');
-            renderChart(sortedWBStats, chartAreas.wb, maxWBCount, 'wb-bar');
-            renderChart(sortedMeteringStats, chartAreas.metering, maxMeteringCount, 'metering-bar');
-
             selectedFocalKey = null;
-            selectedLensKey = sortedLensStats.length > 0 ? sortedLensStats[0][0] : null;
+            if (!selectedLensKey || !lensFocalStats[selectedLensKey]) {
+                selectedLensKey = sortedLensStats.length > 0 ? sortedLensStats[0][0] : null;
+            }
+
+            Object.keys(chartAreas).forEach(renderSectionChart);
             renderLensFocalDetail(selectedLensKey);
             setExportButtonsDisabled(false);
-            
-            // 預設顯示第一個 Tab (焦段)
             showTab('focal');
         }
 
@@ -2058,7 +2165,7 @@
             });
         }
 
-        function renderChart(sortedStats, chartArea, maxCount, barClass) {
+        function renderChart(sortedStats, chartArea, maxCount, barClass, sectionKey = '') {
             chartArea.innerHTML = '';
             
             if (sortedStats.length === 0) {
@@ -2109,7 +2216,7 @@
                     row.dataset.focalKey = label;
                     row.addEventListener('click', () => {
                         selectedFocalKey = selectedFocalKey === label ? null : label;
-                        renderChart(sortedStats, chartArea, maxCount, barClass);
+                        renderSectionChart(sectionKey || 'focal');
                     });
                     if (selectedFocalKey === label) {
                         row.classList.add('selected');
