@@ -20,6 +20,7 @@
 | 名稱 | 路徑 | 說明 |
 |---|---|---|
 | 節日賀卡 | `games/card/` | 給 3–6 歲小朋友玩的貼紙賀卡，平板優先；可復原、存成圖片 |
+| 方塊世界 | `games/voxel/` | 瀏覽器版方塊沙盒，有生存與創造模式：挖掘採集、動物、夜晚怪物（殭屍、苦力怕、蜘蛛）、血量與床。three.js 自訂著色器：即時陰影、日夜循環、水面折射反射、體積光；支援平板觸控 |
 
 ## 使用方式
 
@@ -41,6 +42,7 @@ tools/              影像工具
   fonts/            相框製作使用的內嵌字型
 games/              小遊戲
   card/             節日賀卡
+  voxel/            方塊世界（three.js）
 ```
 
 `tools/lens_analyzer.html` 與 `tools/card.html` 是舊網址的轉址頁，保留給既有書籤使用。
@@ -58,4 +60,4 @@ games/              小遊戲
 以下資源需要網路才能載入：
 
 - 字型：Google Fonts（Noto Sans TC、Barlow Condensed、Chiron GoRound TC）。離線時會退回系統字型。
-- 函式庫：[exif-js](https://github.com/exif-js/exif-js)（鏡頭分析器）、[JSZip](https://stuk.github.io/jszip/)（批次浮水印），皆從 CDN 載入。
+- 函式庫：[exif-js](https://github.com/exif-js/exif-js)（鏡頭分析器）、[JSZip](https://stuk.github.io/jszip/)（批次浮水印）、[three.js](https://threejs.org/) 0.170（方塊世界），皆從 CDN 載入。
