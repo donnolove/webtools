@@ -159,6 +159,25 @@
             color: var(--muted);
         }
 
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            padding: 12px 24px 0;
+        }
+
+        .section-head h2 {
+            margin: 0;
+            font-size: 1.05rem;
+            letter-spacing: -0.03em;
+        }
+
+        .section-head span {
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+
         .tools-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -270,6 +289,7 @@
 
             .topbar,
             .intro,
+            .section-head,
             .tools-grid {
                 padding-left: 16px;
                 padding-right: 16px;
@@ -312,6 +332,10 @@
                 </div>
             </section>
 
+            <div class="section-head">
+                <h2>Tools</h2>
+                <span>影像處理工具</span>
+            </div>
             <section class="tools-grid">
                 <a href="./tools/lens-analyzer/" target="_blank" class="tool">
                     <div class="tool-top">
@@ -328,24 +352,9 @@
                     </div>
                 </a>
 
-                <a href="./tools/card.html" target="_blank" class="tool">
-                    <div class="tool-top">
-                        <span class="tool-no">02</span>
-                        <span class="tool-tag">Interactive</span>
-                    </div>
-                    <div>
-                        <h2>互動遊戲</h2>
-                        <p>以輕量互動與小遊戲形式呈現內容，適合展示、體驗與玩法測試。</p>
-                    </div>
-                    <div class="tool-bottom">
-                        <span>新分頁開啟</span>
-                        <span class="tool-arrow">→</span>
-                    </div>
-                </a>
-
                 <a href="./tools/watermask.html" target="_blank" class="tool">
                     <div class="tool-top">
-                        <span class="tool-no">03</span>
+                        <span class="tool-no">02</span>
                         <span class="tool-tag">Watermark</span>
                     </div>
                     <div>
@@ -360,7 +369,7 @@
 
                 <a href="./tools/photoFrame.html" target="_blank" class="tool">
                     <div class="tool-top">
-                        <span class="tool-no">04</span>
+                        <span class="tool-no">03</span>
                         <span class="tool-tag">Frame</span>
                     </div>
                     <div>
@@ -373,14 +382,35 @@
                     </div>
                 </a>
 
-                <a href="./tools/editor.html" target="_blank" class="tool tool-wide">
+                <a href="./tools/editor.html" target="_blank" class="tool">
                     <div class="tool-top">
-                        <span class="tool-no">05</span>
+                        <span class="tool-no">04</span>
                         <span class="tool-tag">Editor</span>
                     </div>
                     <div>
                         <h2>圖片編輯器</h2>
                         <p>集中處理裁切、調整與基礎編修，適合作為整體工作流程的最後一步。</p>
+                    </div>
+                    <div class="tool-bottom">
+                        <span>新分頁開啟</span>
+                        <span class="tool-arrow">→</span>
+                    </div>
+                </a>
+            </section>
+
+            <div class="section-head">
+                <h2>Games</h2>
+                <span>互動與小遊戲</span>
+            </div>
+            <section class="tools-grid">
+                <a href="./games/card/" target="_blank" class="tool">
+                    <div class="tool-top">
+                        <span class="tool-no">01</span>
+                        <span class="tool-tag">Interactive</span>
+                    </div>
+                    <div>
+                        <h2>互動遊戲</h2>
+                        <p>以輕量互動與小遊戲形式呈現內容，適合展示、體驗與玩法測試。</p>
                     </div>
                     <div class="tool-bottom">
                         <span>新分頁開啟</span>
