@@ -1,1 +1,7 @@
 .DS_Store
+
+# AI workflow（本機使用，不納入版本控制）
+.ai-workflow/
+AGENTS.md
+CLAUDE.md
+docs/ai-handoff.md
