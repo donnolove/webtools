@@ -2,488 +2,452 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>溫暖又有趣的互動節日賀卡（單檔 SPA）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>節日賀卡</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg1:#fff6e9;
-      --bg2:#ffe8f1;
-      --panel:#ffffffcc;
-      --ink:#2b2b2b;
-      --accent:#ff5aa5;
-      --accent2:#4dd4ff;
-      --shadow: 0 10px 25px rgba(0,0,0,.12);
-      --shadow2: 0 6px 14px rgba(0,0,0,.10);
-      --radius: 18px;
-      --cardW: min(820px, 92vw);
-      --cardH: min(520px, 60vh);
+      --sky:#d9f1ff;
+      --ink:#5b3a5e;
+      --ink-soft:#9a7d9c;
+      --pink:#ff8fb8;   --pink-d:#e8699a;
+      --lilac:#b9a2ff;  --lilac-d:#957ae8;
+      --blue:#7fd0ff;   --blue-d:#52b3ea;
+      --lemon:#ffd76a;  --lemon-d:#efb93a;
+      --peach:#ffb08a;  --peach-d:#ee8d62;
+      --mint:#84e0b2;   --mint-d:#56c692;
+      --shadow-soft: 0 10px 24px rgba(91,58,94,.14);
+      --font: "Chiron GoRound TC", ui-rounded, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
     }
 
     *{ box-sizing:border-box; }
+    html, body{ height:100%; }
     body{
       margin:0;
-      font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 15% 10%, var(--bg2), transparent 55%),
-        radial-gradient(1200px 800px at 85% 20%, var(--bg1), transparent 55%),
-        linear-gradient(120deg, #fff, #fff6fb 60%, #f2fbff);
-      min-height:100vh;
       overflow:hidden;
+      font-family:var(--font);
+      color:var(--ink);
+      -webkit-tap-highlight-color: transparent;
+      background:
+        radial-gradient(70px 30px at 10% 16%, #fff 98%, transparent),
+        radial-gradient(50px 24px at 14% 13%, #fff 98%, transparent),
+        radial-gradient(80px 32px at 90% 90%, rgba(255,255,255,.85) 98%, transparent),
+        radial-gradient(52px 24px at 86% 87%, rgba(255,255,255,.85) 98%, transparent),
+        linear-gradient(180deg, var(--sky) 0%, #eaf7ff 100%);
     }
+
+    button{ font:inherit; color:inherit; }
 
     .app{
-      display:grid;
-      grid-template-columns: 320px 1fr;
-      gap:16px;
-      padding:16px;
       height:100vh;
+      height:100dvh;
+      max-width:1400px;
+      margin:0 auto;
+      padding:16px;
+      display:grid;
+      grid-template-columns:minmax(0, 1fr);
+      grid-template-rows:auto minmax(0, 1fr) auto;
+      gap:14px;
     }
 
-    /* 左側面板 */
-    .sidebar{
-      background:var(--panel);
-      border:1px solid rgba(255,255,255,.7);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow2);
-      backdrop-filter: blur(10px);
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-    }
-
-    .brand{
-      padding:14px 14px 10px;
+    /* 上方工具列 */
+    .bar{
       display:flex;
       align-items:center;
       gap:10px;
-      border-bottom:1px solid rgba(0,0,0,.06);
-      background: linear-gradient(135deg, rgba(255,90,165,.14), rgba(77,212,255,.14));
-    }
-    .logo{
-      width:40px;height:40px;border-radius:14px;
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,.8), var(--shadow2);
-      display:grid;place-items:center;
-      background: radial-gradient(circle at 30% 30%, #fff, rgba(255,255,255,.55)),
-                  linear-gradient(135deg, #ff5aa5, #4dd4ff);
-      color:white;
-      font-size:20px;
-    }
-    .brand h1{
-      margin:0;
-      font-size:16px;
-      line-height:1.2;
-    }
-    .brand p{
-      margin:2px 0 0;
-      font-size:12px;
-      opacity:.8;
-    }
-
-    .controls{
-      padding:12px 14px;
-      display:grid;
-      gap:10px;
-      border-bottom:1px solid rgba(0,0,0,.06);
-    }
-
-    .row{
-      display:flex;
-      gap:8px;
       flex-wrap:wrap;
-      align-items:center;
     }
+    .bar .spacer{ flex:1; }
 
-    button, .chip, select, input[type="range"], input[type="text"]{
-      font:inherit;
-    }
-
-    .btn{
+    .gummy{
+      --c:var(--pink); --d:var(--pink-d);
+      width:68px; height:64px;
       border:0;
-      border-radius:14px;
-      padding:10px 12px;
-      background:white;
-      box-shadow: var(--shadow2);
+      border-radius:22px;
+      background: linear-gradient(to bottom, rgba(255,255,255,.38), rgba(255,255,255,0) 50%), var(--c);
+      box-shadow: 0 5px 0 var(--d), 0 10px 16px rgba(91,58,94,.12);
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
       cursor:pointer;
-      transition: transform .08s ease, box-shadow .2s ease;
       user-select:none;
-      touch-action: manipulation;
+      touch-action:manipulation;
+      transition: transform 80ms ease, box-shadow 80ms ease, opacity 150ms ease;
     }
-    .btn:active{ transform: translateY(1px) scale(.99); box-shadow: 0 4px 10px rgba(0,0,0,.10); }
-    .btn.primary{
-      background: linear-gradient(135deg, #ff5aa5, #ffb703);
-      color:white;
+    .gummy i{ font-style:normal; font-family:var(--emoji); font-size:26px; line-height:1; }
+    .gummy small{ font-size:11px; font-weight:800; letter-spacing:.05em; }
+    .gummy:active{
+      transform:translateY(4px);
+      box-shadow: 0 1px 0 var(--d), 0 4px 8px rgba(91,58,94,.12);
     }
-    .btn.cool{
-      background: linear-gradient(135deg, #4dd4ff, #7c4dff);
-      color:white;
-    }
-    .btn.danger{
-      background: linear-gradient(135deg, #ff5a5f, #ff8a4d);
-      color:white;
+    .gummy.pink{ --c:var(--pink); --d:var(--pink-d); }
+    .gummy.lilac{ --c:var(--lilac); --d:var(--lilac-d); }
+    .gummy.blue{ --c:var(--blue); --d:var(--blue-d); }
+    .gummy.lemon{ --c:var(--lemon); --d:var(--lemon-d); }
+    .gummy.peach{ --c:var(--peach); --d:var(--peach-d); }
+    .gummy.mint{ --c:var(--mint); --d:var(--mint-d); }
+    .gummy[aria-pressed="false"]{ --c:#e7eef3; --d:#cbd6de; color:var(--ink-soft); }
+    .gummy:disabled{ opacity:.45; cursor:default; transform:none; box-shadow: 0 5px 0 var(--d); }
+
+    .gummy:focus-visible,
+    .swatch:focus-visible,
+    .tab:focus-visible,
+    .sticker-btn:focus-visible,
+    .pop button:focus-visible,
+    .pen:focus-visible{
+      outline:3px solid var(--lilac-d);
+      outline-offset:3px;
     }
 
-    .toggle{
-      display:flex;align-items:center;gap:8px;
-      padding:8px 10px;border-radius:14px;background:white;box-shadow:var(--shadow2);
-    }
-    .toggle input{ transform: scale(1.1); }
-
-    .label{
-      font-size:12px;
-      opacity:.8;
-    }
-
-    .textInput{
-      width:100%;
-      padding:10px 12px;
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,.08);
-      background:#fff;
-      box-shadow: inset 0 2px 6px rgba(0,0,0,.06);
-      outline:none;
-    }
-
-    .stickerLibrary{
-      padding:12px 14px 14px;
-      overflow:auto;
-      min-height:0;
-    }
-
-    .sectionTitle{
-      display:flex;align-items:center;justify-content:space-between;
-      gap:10px;
-      margin:10px 0 8px;
-    }
-    .sectionTitle h2{
-      margin:0;
-      font-size:13px;
-      letter-spacing:.5px;
-      opacity:.85;
-    }
-    .hint{
-      font-size:12px;
-      opacity:.7;
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns: repeat(5, 1fr);
+    .swatches{
+      display:flex;
       gap:8px;
+      padding:8px 10px;
+      background:rgba(255,255,255,.7);
+      border-radius:999px;
     }
+    .swatch{
+      width:40px; height:40px;
+      border:0;
+      border-radius:50%;
+      cursor:pointer;
+      box-shadow: inset 0 -4px 0 rgba(0,0,0,.08);
+      touch-action:manipulation;
+    }
+    .swatch[aria-checked="true"]{ box-shadow: 0 0 0 4px #fff, 0 0 0 7px var(--pink); }
+    .swatch[data-bg="pinkBlue"]{ background:linear-gradient(135deg,#ffd3e6,#cfeeff); }
+    .swatch[data-bg="warmGold"]{ background:linear-gradient(135deg,#ffe7a8,#ffc2a8); }
+    .swatch[data-bg="mintCandy"]{ background:linear-gradient(135deg,#c9f5e1,#ffd9ec); }
+    .swatch[data-bg="nightStar"]{ background:linear-gradient(135deg,#3b3f8f,#8a6cf0); }
 
-    .sticker{
-      height:48px;
-      border-radius:14px;
-      background:white;
-      box-shadow:var(--shadow2);
+    /* 賀卡 */
+    .stage-wrap{
+      container-type:size;
       display:grid;
       place-items:center;
-      cursor:grab;
-      user-select:none;
-      touch-action:none;
-      position:relative;
-      overflow:hidden;
-      border:1px solid rgba(0,0,0,.05);
-    }
-    .sticker:active{ cursor:grabbing; }
-    .sticker span{
-      font-size:26px;
-      filter: drop-shadow(0 2px 2px rgba(0,0,0,.15));
-    }
-    .sticker small{
-      position:absolute;
-      bottom:3px;right:6px;
-      font-size:10px;
-      opacity:.55;
-      background:rgba(255,255,255,.7);
-      padding:2px 6px;
-      border-radius:99px;
-    }
-
-    /* 右側賀卡區 */
-    .main{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-width:0;
-      position:relative;
-    }
-
-    .cardWrap{
-      width:var(--cardW);
-      max-width:calc(100vw - 360px);
-      position:relative;
+      min-height:0;
     }
 
     .card{
-      width:100%;
-      height:var(--cardH);
-      border-radius:28px;
-      box-shadow:var(--shadow);
-      background:
-        radial-gradient(700px 400px at 30% 20%, rgba(255,255,255,.9), transparent 55%),
-        radial-gradient(700px 400px at 80% 80%, rgba(255,255,255,.7), transparent 60%),
-        linear-gradient(135deg, rgba(255,90,165,.22), rgba(77,212,255,.22));
-      border:1px solid rgba(255,255,255,.6);
+      --c1:#ffd3e6; --c2:#cfeeff; --glow:.9;
       position:relative;
+      width:min(100cqw, 150cqh);
+      aspect-ratio:3 / 2;
+      container-type:inline-size;
+      border:6px solid #fff;
+      border-radius:30px;
       overflow:hidden;
-    }
-
-    .card::before{
-      content:"";
-      position:absolute; inset:-40%;
+      box-shadow: 0 14px 30px rgba(91,58,94,.14);
       background:
-        radial-gradient(circle at 20% 30%, rgba(255,255,255,.55), transparent 35%),
-        radial-gradient(circle at 80% 60%, rgba(255,255,255,.45), transparent 35%),
-        radial-gradient(circle at 50% 80%, rgba(255,255,255,.35), transparent 40%);
-      transform: rotate(10deg);
-      opacity:.9;
-      pointer-events:none;
+        radial-gradient(56% 56% at 25% 20%, rgba(255,255,255,var(--glow)), transparent),
+        linear-gradient(135deg, var(--c1), var(--c2));
     }
+    .card[data-bg="warmGold"]{ --c1:#ffe7a8; --c2:#ffc2a8; }
+    .card[data-bg="mintCandy"]{ --c1:#c9f5e1; --c2:#ffd9ec; }
+    .card[data-bg="nightStar"]{ --c1:#3b3f8f; --c2:#8a6cf0; --glow:.18; }
 
-    .headerText{
+    .title-block{
       position:absolute;
-      top:18px; left:18px; right:18px;
-      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
-      pointer-events:none;
+      top:3%; left:2.5%;
+      z-index:2;
+      max-width:66%;
+      padding:1.4cqw 2.2cqw 1.6cqw;
+      background:rgba(255,255,255,.85);
+      border-radius:2.8cqw;
+      box-shadow: 0 4px 0 rgba(255,143,184,.25);
     }
-    .titleBlock{
-      padding:12px 14px;
-      background: rgba(255,255,255,.72);
-      border:1px solid rgba(255,255,255,.7);
-      border-radius:18px;
-      box-shadow:var(--shadow2);
-      backdrop-filter: blur(8px);
-      max-width: 70%;
+    .card-title,
+    .card-wish{
+      display:block;
+      outline:none;
+      border-radius:8px;
+      overflow-wrap:anywhere;
+      line-height:1.3;
     }
-    .titleBlock h3{
-      margin:0;
-      font-size:22px;
-      letter-spacing:.5px;
+    .card-title{
+      font-size:max(16px, 3cqw);
+      font-weight:800;
     }
-    .titleBlock p{
-      margin:6px 0 0;
-      font-size:13px;
-      opacity:.82;
-      line-height:1.4;
+    .card-wish{
+      margin-top:.4cqw;
+      font-size:max(12px, 1.9cqw);
+      font-weight:600;
+      color:var(--ink-soft);
     }
+    .card-title:focus,
+    .card-wish:focus{ background:#fff3f8; box-shadow:0 0 0 4px #fff3f8; }
 
-    .badge{
-      padding:10px 12px;
-      border-radius:999px;
-      background: rgba(255,255,255,.72);
-      border:1px solid rgba(255,255,255,.7);
-      box-shadow:var(--shadow2);
-      backdrop-filter: blur(8px);
-      pointer-events:none;
-      font-size:12px;
-      display:flex; align-items:center; gap:8px;
-      white-space:nowrap;
-    }
-
-    .dropHint{
+    .pen{
       position:absolute;
-      bottom:14px; left:14px;
-      padding:10px 12px;
-      border-radius:16px;
-      background: rgba(255,255,255,.66);
-      border:1px dashed rgba(0,0,0,.18);
-      font-size:12px;
-      box-shadow:var(--shadow2);
-      backdrop-filter: blur(8px);
-      max-width: 70%;
+      top:-12px; right:-12px;
+      width:34px; height:34px;
+      border:0;
+      border-radius:50%;
+      background:var(--lemon);
+      box-shadow:0 3px 0 var(--lemon-d);
+      display:grid; place-items:center;
+      font-family:var(--emoji);
+      font-size:15px;
+      cursor:pointer;
     }
 
     .stage{
       position:absolute;
       inset:0;
-      /* sticker items live here */
-      touch-action:none;
+      z-index:3;
+      pointer-events:none;
     }
 
     /* 放到卡片上的貼紙 */
     .item{
       position:absolute;
-      transform: translate(-50%, -50%);
+      pointer-events:auto;
       cursor:grab;
       user-select:none;
+      -webkit-user-select:none;
       touch-action:none;
-      filter: drop-shadow(0 8px 10px rgba(0,0,0,.18));
+      line-height:1;
+      filter: drop-shadow(0 6px 6px rgba(91,58,94,.18));
     }
     .item:active{ cursor:grabbing; }
-    .item .emoji{
-      font-size:48px;
-      display:block;
-      transform-origin:center;
-    }
-    .item .shape{
-      width:86px; height:86px;
-      display:block;
-    }
+    .item .inner{ display:block; }
+    .item .emoji{ font-family:var(--emoji); font-size:7cqw; display:block; }
+    .item .shape{ display:block; width:11cqw; height:11cqw; }
+    .item .shape svg{ display:block; width:100%; height:100%; }
     .item.selected{
-      outline: 2px dashed rgba(255,90,165,.9);
-      outline-offset: 6px;
-      border-radius: 12px;
+      outline:3px dashed var(--pink);
+      outline-offset:8px;
+      border-radius:14px;
+    }
+    .item.pop-in .inner{ animation: pop-in 380ms cubic-bezier(.3,1.6,.5,1) both; }
+    @keyframes pop-in{
+      from{ transform:scale(.2); opacity:0; }
+      to{ transform:scale(1); opacity:1; }
     }
 
-    .floatingTools{
+    .hint{
       position:absolute;
-      right:14px; bottom:14px;
-      display:flex;
-      gap:8px;
-      z-index:5;
+      left:50%; bottom:3%;
+      z-index:2;
+      font-family:var(--emoji);
+      font-size:6cqw;
+      pointer-events:none;
+      filter: drop-shadow(0 6px 6px rgba(91,58,94,.2));
+      animation: bob 1.1s ease-in-out infinite;
     }
-    .mini{
-      padding:10px 12px;
-      border-radius:16px;
-      background: rgba(255,255,255,.78);
-      border:1px solid rgba(255,255,255,.7);
-      box-shadow:var(--shadow2);
-      cursor:pointer;
-      user-select:none;
-      backdrop-filter: blur(8px);
-      font-size:12px;
-      display:flex; align-items:center; gap:8px;
+    .hint[hidden]{ display:none; }
+    @keyframes bob{
+      0%, 100%{ transform:translate(-50%, 0); }
+      50%{ transform:translate(-50%, 12px); }
     }
 
-    /* 雪花層 */
-    .snowLayer{
+    /* 選取貼紙的小工具列 */
+    .pop{
+      --arrow-x:50%;
+      position:absolute;
+      z-index:1000;
+      display:none;
+      gap:8px;
+      padding:8px;
+      background:#fff;
+      border-radius:24px;
+      box-shadow: var(--shadow-soft);
+    }
+    .pop.show{ display:flex; }
+    .pop::before{
+      content:"";
+      position:absolute;
+      top:-7px; left:var(--arrow-x);
+      width:16px; height:16px;
+      background:#fff;
+      border-radius:3px;
+      transform:translateX(-50%) rotate(45deg);
+    }
+    .pop.above::before{ top:auto; bottom:-7px; }
+    .pop button{
+      position:relative;
+      width:50px; height:50px;
+      border:0;
+      border-radius:16px;
+      display:grid; place-items:center;
+      font-family:var(--emoji);
+      font-size:22px;
+      cursor:pointer;
+      touch-action:manipulation;
+      transition: transform 80ms ease;
+    }
+    .pop button:active{ transform:scale(.9); }
+    .pop .p-delete{ background:#ffe1ea; }
+    .pop .p-rotate{ background:#e6ddff; }
+    .pop .p-bigger{ background:#dcf5e8; }
+    .pop .p-smaller{ background:#dff2ff; }
+
+    /* 下方貼紙托盤 */
+    .tray{
+      display:flex;
+      gap:12px;
+      height:156px;
+    }
+    .tabs{
+      display:grid;
+      grid-template-columns:repeat(2, 60px);
+      gap:6px;
+    }
+    .tab{
+      border:0;
+      border-radius:18px;
+      background:rgba(255,255,255,.7);
+      font-family:var(--emoji);
+      font-size:26px;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+    .tab[aria-selected="true"]{ background:var(--pink); box-shadow:0 4px 0 var(--pink-d); }
+
+    .sticker-panel{
+      position:relative;
+      flex:1;
+      min-width:0;
+      background:#fff;
+      border-radius:26px;
+      box-shadow: 0 8px 20px rgba(91,58,94,.1);
+      overflow:hidden;
+    }
+    .sticker-panel::after{
+      content:"";
+      position:absolute;
+      top:0; right:0; bottom:0;
+      width:56px;
+      background:linear-gradient(to right, rgba(255,255,255,0), #fff);
+      pointer-events:none;
+    }
+    .sticker-list{
+      height:100%;
+      display:grid;
+      grid-auto-flow:column;
+      grid-template-rows:repeat(2, 1fr);
+      grid-auto-columns:70px;
+      gap:8px;
+      padding:10px 56px 10px 10px;
+      overflow-x:auto;
+      overflow-y:hidden;
+      overscroll-behavior-x:contain;
+      scrollbar-width:none;
+      touch-action:pan-x;
+    }
+    .sticker-list::-webkit-scrollbar{ display:none; }
+    .sticker-btn{
+      border:0;
+      border-radius:18px;
+      background:#fff6fa;
+      box-shadow: inset 0 -3px 0 #ffe1ee;
+      display:grid; place-items:center;
+      font-family:var(--emoji);
+      font-size:36px;
+      cursor:pointer;
+      touch-action:pan-x;
+      transition: transform 80ms ease;
+    }
+    .sticker-btn:active{ transform:scale(.9); }
+    .sticker-btn svg{ width:44px; height:44px; }
+
+    /* 雪花與彩紙 */
+    .snow-layer{
       position:fixed;
       inset:0;
+      z-index:50;
       pointer-events:none;
       overflow:hidden;
-      z-index:50;
     }
     .flake{
       position:absolute;
       top:-10vh;
-      opacity:.9;
-      filter: drop-shadow(0 2px 2px rgba(0,0,0,.08));
-      will-change: transform;
+      will-change:transform;
+    }
+    .confetti{
+      position:fixed;
+      z-index:80;
+      border-radius:4px;
+      pointer-events:none;
     }
 
-    /* 小螢幕：側欄下移 */
-    @media (max-width: 980px){
-      body{ overflow:auto; }
-      .app{
-        grid-template-columns: 1fr;
-        height:auto;
-        min-height:100vh;
-      }
-      .cardWrap{ max-width: 100%; }
-      .main{ padding-bottom: 18px; }
+    /* 平板直向：托盤多一排 */
+    @media (orientation: portrait) and (min-height: 900px){
+      .tray{ height:250px; }
+      .tabs{ grid-template-columns:66px; }
+      .sticker-list{ grid-template-rows:repeat(3, 1fr); }
+    }
+
+    /* 小螢幕 */
+    @media (max-width: 700px){
+      .app{ padding:10px; gap:10px; }
+      .gummy{ width:52px; height:52px; border-radius:18px; }
+      .gummy i{ font-size:20px; }
+      .gummy small{ font-size:10px; }
+      .swatch{ width:30px; height:30px; }
+      .tray{ height:140px; }
+      .tabs{ grid-template-columns:48px; }
+      .tab{ font-size:20px; }
+      .sticker-list{ grid-auto-columns:60px; }
+      .sticker-btn{ font-size:30px; }
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .item.pop-in .inner, .hint{ animation:none; }
+      .gummy, .sticker-btn, .pop button{ transition:none; }
     }
   </style>
 </head>
 <body>
-  <div class="snowLayer" id="snowLayer"></div>
+  <div class="snow-layer" id="snowLayer" aria-hidden="true"></div>
 
   <div class="app">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="logo">🎁</div>
-        <div>
-          <h1>互動節日賀卡</h1>
-          <p>拖放貼紙、點一下會發出音效 ✨</p>
-        </div>
+    <header class="bar">
+      <button class="gummy pink" id="btnCelebrate" type="button"><i aria-hidden="true">🎉</i><small>煙火</small></button>
+      <button class="gummy lilac" id="btnShuffle" type="button"><i aria-hidden="true">🪄</i><small>驚喜</small></button>
+      <button class="gummy blue" id="btnSnow" type="button" aria-pressed="true"><i aria-hidden="true">❄️</i><small>雪花</small></button>
+      <div class="swatches" role="radiogroup" aria-label="卡片背景">
+        <button class="swatch" type="button" role="radio" data-bg="pinkBlue" aria-label="粉紅天空" aria-checked="true"></button>
+        <button class="swatch" type="button" role="radio" data-bg="warmGold" aria-label="暖橘" aria-checked="false"></button>
+        <button class="swatch" type="button" role="radio" data-bg="mintCandy" aria-label="薄荷糖" aria-checked="false"></button>
+        <button class="swatch" type="button" role="radio" data-bg="nightStar" aria-label="夜空" aria-checked="false"></button>
       </div>
+      <span class="spacer"></span>
+      <button class="gummy lemon" id="btnUndo" type="button" disabled><i aria-hidden="true">↩️</i><small>復原</small></button>
+      <button class="gummy peach" id="btnClear" type="button"><i aria-hidden="true">🧹</i><small>清空</small></button>
+      <button class="gummy mint" id="btnSave" type="button"><i aria-hidden="true">📷</i><small>存圖</small></button>
+    </header>
 
-      <div class="controls">
-        <div class="row">
-          <button class="btn primary" id="btnCelebrate">🎉 施放煙火</button>
-          <button class="btn cool" id="btnShuffle">🪄 隨機驚喜</button>
-          <button class="btn danger" id="btnClear">🧹 清空貼紙</button>
+    <main class="stage-wrap">
+      <div class="card" id="card" data-bg="pinkBlue">
+        <div class="title-block" id="titleBlock">
+          <span class="card-title" id="cardTitle" contenteditable="true" spellcheck="false" role="textbox" aria-label="卡片標題">暖呼呼的節日賀卡 🎄</span>
+          <span class="card-wish" id="cardWish" contenteditable="true" spellcheck="false" role="textbox" aria-label="祝福文字">祝你節日快樂！每天都像糖果一樣甜～</span>
+          <button class="pen" id="btnPen" type="button" aria-label="修改文字">✏️</button>
         </div>
-
-        <div>
-          <div class="label">賀卡祝福文字（可改）</div>
-          <input class="textInput" id="wishText" type="text" value="祝你節日快樂！每天都像糖果一樣甜～" />
-        </div>
-
-        <div class="row" style="justify-content:space-between;">
-          <label class="toggle">
-            <input type="checkbox" id="snowToggle" checked />
-            <span>❄️ 雪花</span>
-          </label>
-
-          <div style="flex:1; min-width:140px;">
-            <div class="label">雪花強度</div>
-            <input type="range" id="snowLevel" min="0" max="100" value="60" style="width:100%;" />
-          </div>
-        </div>
-
-        <div class="row" style="justify-content:space-between;">
-          <div style="flex:1;">
-            <div class="label">背景風格</div>
-            <select class="btn" id="bgSelect" style="width:100%; padding:10px 12px;">
-              <option value="pinkBlue" selected>粉紅 × 天空藍</option>
-              <option value="warmGold">溫暖金橘</option>
-              <option value="mintCandy">薄荷糖果</option>
-              <option value="nightStar">夜空星光</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="hint">小技巧：貼紙放上去後，可以再拖動；點一下選取；雙擊可以旋轉；按 Delete 可刪除選取貼紙。</div>
-      </div>
-
-      <div class="stickerLibrary" id="library">
-        <div class="sectionTitle">
-          <h2>🎀 甜甜裝飾</h2>
-          <span class="hint">拖我到賀卡 ➜</span>
-        </div>
-        <div class="grid" id="gridCute"></div>
-
-        <div class="sectionTitle" style="margin-top:14px;">
-          <h2>⭐ 亮晶晶</h2>
-          <span class="hint">越多越可愛</span>
-        </div>
-        <div class="grid" id="gridSparkle"></div>
-
-        <div class="sectionTitle" style="margin-top:14px;">
-          <h2>🎅 節日角色</h2>
-          <span class="hint">嗶嗶啵啵</span>
-        </div>
-        <div class="grid" id="gridHoliday"></div>
-
-        <div class="sectionTitle" style="margin-top:14px;">
-          <h2>🎨 形狀貼紙</h2>
-          <span class="hint">愛心/星星/彩帶</span>
-        </div>
-        <div class="grid" id="gridShapes"></div>
-
-        <div class="hint" style="margin-top:14px;">
-          ※ 音效需要使用者互動後才會啟動（瀏覽器規則）。如果沒聲音，先點一次「施放煙火」就好。
-        </div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <div class="cardWrap">
-        <div class="card" id="card">
-          <div class="headerText">
-            <div class="titleBlock">
-              <h3 id="cardTitle">暖呼呼的節日賀卡 🎄</h3>
-              <p id="cardWish">祝你節日快樂！每天都像糖果一樣甜～</p>
-            </div>
-            <div class="badge">🧸 親子互動模式</div>
-          </div>
-
-          <div class="stage" id="stage" aria-label="drop area"></div>
-
-          <div class="dropHint">把左邊貼紙拖到這裡～<br>也可以一直加、一直加、一直加！</div>
-
-          <div class="floatingTools">
-            <div class="mini" id="btnBringFront" title="把選取貼紙移到最上層">⬆️ 置頂</div>
-            <div class="mini" id="btnSendBack" title="把選取貼紙移到最下層">⬇️ 置底</div>
-            <div class="mini" id="btnBigger" title="放大選取貼紙">➕ 放大</div>
-            <div class="mini" id="btnSmaller" title="縮小選取貼紙">➖ 縮小</div>
-          </div>
+        <div class="stage" id="stage"></div>
+        <span class="hint" id="hint" aria-hidden="true" hidden>👇</span>
+        <div class="pop" id="pop" role="toolbar" aria-label="貼紙工具">
+          <button class="p-delete" id="btnDelete" type="button" aria-label="刪除貼紙">🗑️</button>
+          <button class="p-rotate" id="btnRotate" type="button" aria-label="旋轉貼紙">🔄</button>
+          <button class="p-bigger" id="btnBigger" type="button" aria-label="放大貼紙">➕</button>
+          <button class="p-smaller" id="btnSmaller" type="button" aria-label="縮小貼紙">➖</button>
         </div>
       </div>
     </main>
+
+    <footer class="tray">
+      <div class="tabs" role="tablist" aria-label="貼紙種類">
+        <button class="tab" type="button" role="tab" data-group="cute" aria-label="甜甜裝飾" aria-selected="true">🎀</button>
+        <button class="tab" type="button" role="tab" data-group="sparkle" aria-label="亮晶晶" aria-selected="false">🌟</button>
+        <button class="tab" type="button" role="tab" data-group="holiday" aria-label="節日角色" aria-selected="false">🎅</button>
+        <button class="tab" type="button" role="tab" data-group="shapes" aria-label="形狀貼紙" aria-selected="false">💗</button>
+      </div>
+      <div class="sticker-panel">
+        <div class="sticker-list" id="stickerList" role="tabpanel"></div>
+      </div>
+    </footer>
   </div>
 
 <script>
@@ -593,148 +557,190 @@ const SFX = (() => {
 ---------------------------- */
 const STICKERS = {
   cute: ["🎀","🍭","🍬","🧁","🍰","🍩","🍪","🫧","🌈","🧸","🧋","🍓","🍒","🍎","🍉","🍌","🍍","🥨","🥞","🧇","🫶","💗","💖","💝","💞"],
-  sparkle: ["✨","🌟","⭐","💫","🎇","🎆","🪩","🔔","🕯️","🧨","🎈","🎉","🧡","💛","💚","💙","💜","🤍","🩷","🩵","🩶","🧿","🌙","☁️","🫰"],
-  holiday: ["🎄","🎁","🎅","🤶","🦌","⛄","🧤","🧣","🧦","🍷","🥛","🍫","🧸","🕊️","🎶","📯","🕯️","🔔","🍊","🌰","🍯"],
+  sparkle: ["✨","🌟","⭐","💫","🎇","🎆","🪩","🔔","🎈","🎉","🧡","💛","💚","💙","💜","🤍","🩷","🩵","🩶","🧿","🌙","☁️","🫰"],
+  holiday: ["🎄","🎁","🎅","🤶","🦌","⛄","🧤","🧣","🧦","🥛","🍫","🕊️","🎶","📯","🕯️","🍊","🌰","🍯"],
   shapes: ["shape:heart","shape:star","shape:ribbon","shape:confetti","shape:snowman","shape:cookie"]
 };
+const ALL_STICKERS = [].concat(STICKERS.cute, STICKERS.sparkle, STICKERS.holiday, STICKERS.shapes);
+const SHAPE_COLORS_1 = ["#ff5aa5","#4dd4ff","#ffb703","#7c4dff","#2dd4bf","#fb7185"];
+const SHAPE_COLORS_2 = ["#ffe066","#ffd6e7","#b8f2ff","#d6c7ff","#c7ffd8","#ffffff"];
+
+const card = document.getElementById("card");
+const stage = document.getElementById("stage");
+const hint = document.getElementById("hint");
+const pop = document.getElementById("pop");
+const cardTitle = document.getElementById("cardTitle");
+const cardWish = document.getElementById("cardWish");
+const stickerList = document.getElementById("stickerList");
+const btnUndo = document.getElementById("btnUndo");
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------------------------
-   2) 建立貼紙庫 UI
+   2) 貼紙托盤：分類切換、點一下放到卡片、電腦可拖放
 ---------------------------- */
-function addStickerButtons(list, containerId){
-  const grid = document.getElementById(containerId);
-  list.forEach((code, idx) => {
-    const div = document.createElement("div");
-    div.className = "sticker";
-    div.setAttribute("draggable", "true");
-    div.dataset.code = code;
+function renderTray(group){
+  stickerList.innerHTML = "";
+  STICKERS[group].forEach((code) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sticker-btn";
+    btn.draggable = true;
+    btn.dataset.code = code;
 
     if(code.startsWith("shape:")){
-      const name = code.split(":")[1];
-      div.innerHTML = `<span aria-hidden="true">${shapeIcon(name)}</span><small>形</small>`;
+      btn.setAttribute("aria-label", "形狀貼紙");
+      btn.appendChild(makeShapeSvg(code.split(":")[1], "#ff8fb8", "#ffe066", 7));
     }else{
-      div.innerHTML = `<span>${code}</span><small>拖放</small>`;
+      btn.setAttribute("aria-label", "貼紙 " + code);
+      btn.textContent = code;
     }
 
-    div.addEventListener("dragstart", (e) => {
+    btn.addEventListener("click", () => {
+      SFX.unlock();
+      pushUndo();
+      const spot = findFreeSpot();
+      const it = addItem(newItemData(code, spot.x, spot.y), true);
+      selectItem(it);
+      SFX.pop();
+    });
+
+    btn.addEventListener("dragstart", (e) => {
       SFX.unlock();
       SFX.twinkle();
       e.dataTransfer.setData("text/plain", code);
+      e.dataTransfer.effectAllowed = "copy";
     });
 
-    // 手機：按住就「生成一個可拖動的貼紙」跟著手指走
-    div.addEventListener("pointerdown", (e) => {
-      if(e.pointerType === "mouse") return; // mouse 直接用拖曳即可
-      SFX.unlock();
-      SFX.twinkle();
-      const rect = stage.getBoundingClientRect();
-      const x = clamp(e.clientX - rect.left, 0, rect.width);
-      const y = clamp(e.clientY - rect.top, 0, rect.height);
-      const item = createItem(code, x, y);
-      stage.appendChild(item);
-      selectItem(item);
-      startDragItem(item, e);
-    });
-
-    grid.appendChild(div);
+    stickerList.appendChild(btn);
   });
+  stickerList.scrollLeft = 0;
 }
 
-function shapeIcon(name){
-  // 左側貼紙庫用的小圖示（用 emoji 代表）
-  const map = {
-    heart:"💗", star:"⭐", ribbon:"🎀", confetti:"🎊", snowman:"⛄", cookie:"🍪"
-  };
-  return map[name] || "🎨";
-}
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    SFX.unlock(); SFX.twinkle();
+    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t === tab)));
+    renderTray(tab.dataset.group);
+  });
+});
 
-addStickerButtons(STICKERS.cute, "gridCute");
-addStickerButtons(STICKERS.sparkle, "gridSparkle");
-addStickerButtons(STICKERS.holiday, "gridHoliday");
-addStickerButtons(STICKERS.shapes, "gridShapes");
-
-/* ---------------------------
-   3) 賀卡舞台：拖放生成貼紙
----------------------------- */
-const card = document.getElementById("card");
-const stage = document.getElementById("stage");
-let selected = null;
-let zCounter = 10;
-
-stage.addEventListener("dragover", (e) => e.preventDefault());
-stage.addEventListener("drop", (e) => {
+card.addEventListener("dragover", (e) => e.preventDefault());
+card.addEventListener("drop", (e) => {
   e.preventDefault();
-  SFX.unlock();
   const code = e.dataTransfer.getData("text/plain");
-  const rect = stage.getBoundingClientRect();
-  const x = clamp(e.clientX - rect.left, 0, rect.width);
-  const y = clamp(e.clientY - rect.top, 0, rect.height);
-  const item = createItem(code, x, y);
-  stage.appendChild(item);
-  selectItem(item);
+  if(!ALL_STICKERS.includes(code)) return;
+  SFX.unlock();
+  pushUndo();
+  const p = toStagePercent(e.clientX, e.clientY);
+  const it = addItem(newItemData(code, p.x, p.y), true);
+  selectItem(it);
   SFX.pop();
 });
 
-stage.addEventListener("pointerdown", (e) => {
-  // 點空白取消選取
-  if(e.target === stage){
-    selectItem(null);
+// 找一個離其他貼紙和標題比較遠的位置
+function findFreeSpot(){
+  const titleRect = document.getElementById("titleBlock").getBoundingClientRect();
+  const stageRect = stage.getBoundingClientRect();
+  const titleBox = {
+    x2: (titleRect.right - stageRect.left) / stageRect.width * 100,
+    y2: (titleRect.bottom - stageRect.top) / stageRect.height * 100
+  };
+  let best = null, bestScore = -1;
+  for(let i = 0; i < 16; i++){
+    const x = rand(10, 90), y = rand(18, 88);
+    if(x < titleBox.x2 + 4 && y < titleBox.y2 + 6) continue;
+    let score = 100;
+    items.forEach(it => {
+      const d = Math.hypot((it.x - x) * 1.5, it.y - y);
+      score = Math.min(score, d);
+    });
+    if(score > bestScore){ bestScore = score; best = { x, y }; }
   }
-});
+  return best || { x: 50, y: 60 };
+}
 
-function createItem(code, x, y){
-  const item = document.createElement("div");
-  item.className = "item";
-  item.style.left = x + "px";
-  item.style.top  = y + "px";
-  item.style.zIndex = (++zCounter).toString();
+/* ---------------------------
+   3) 卡片上的貼紙：資料與畫面
+---------------------------- */
+let items = [];
+let selected = null;
+let zCounter = 10;
 
-  // 隨機大小/角度（更好玩）
-  const scale = rand(0.85, 1.25);
-  const rot = rand(-18, 18);
-  item.dataset.scale = scale.toFixed(3);
-  item.dataset.rot = rot.toFixed(2);
+function newItemData(code, x, y){
+  return {
+    code, x, y,
+    s: +rand(0.9, 1.2).toFixed(3),
+    r: +rand(-15, 15).toFixed(2),
+    c1: pick(SHAPE_COLORS_1),
+    c2: pick(SHAPE_COLORS_2),
+    seed: Math.floor(Math.random() * 1e6)
+  };
+}
 
-  if(code.startsWith("shape:")){
-    item.appendChild(makeShape(code.split(":")[1]));
+function addItem(data, animate){
+  const it = Object.assign({ z: ++zCounter }, data);
+  zCounter = Math.max(zCounter, it.z);
+
+  const el = document.createElement("div");
+  el.className = "item" + (animate && !reduceMotion ? " pop-in" : "");
+  const inner = document.createElement("span");
+  inner.className = "inner";
+
+  if(it.code.startsWith("shape:")){
+    const wrap = document.createElement("span");
+    wrap.className = "shape";
+    wrap.appendChild(makeShapeSvg(it.code.split(":")[1], it.c1, it.c2, it.seed));
+    inner.appendChild(wrap);
   }else{
     const span = document.createElement("span");
     span.className = "emoji";
-    span.textContent = code;
-    item.appendChild(span);
+    span.textContent = it.code;
+    inner.appendChild(span);
   }
+  el.appendChild(inner);
+  it.el = el;
 
-  applyTransform(item);
-
-  // 點一下選取 + 音效
-  item.addEventListener("pointerdown", (e) => {
+  el.addEventListener("pointerdown", (e) => {
     e.stopPropagation();
     SFX.unlock();
-    selectItem(item);
-    startDragItem(item, e);
+    selectItem(it);
+    startDragItem(it, e);
   });
 
-  // 雙擊旋轉
-  item.addEventListener("dblclick", (e) => {
-    e.stopPropagation();
-    SFX.twinkle();
-    const r = parseFloat(item.dataset.rot || "0") + 25;
-    item.dataset.rot = r.toFixed(2);
-    applyTransform(item);
-  });
-
-  return item;
+  applyItem(it);
+  stage.appendChild(el);
+  items.push(it);
+  syncUi();
+  return it;
 }
 
-function makeShape(name){
-  // 用 SVG 做可愛形狀（不依賴外部圖）
-  const wrap = document.createElement("span");
-  wrap.className = "shape";
+function applyItem(it){
+  it.el.style.left = it.x + "%";
+  it.el.style.top = it.y + "%";
+  it.el.style.zIndex = String(it.z);
+  it.el.style.transform = `translate(-50%, -50%) rotate(${it.r}deg) scale(${it.s})`;
+}
 
+function removeItem(it){
+  it.el.remove();
+  items = items.filter(x => x !== it);
+  if(selected === it) selectItem(null);
+  syncUi();
+}
+
+function clearItems(){
+  items.forEach(it => it.el.remove());
+  items = [];
+  selectItem(null);
+  syncUi();
+}
+
+function makeShapeSvg(name, color1, color2, seed){
+  // 用 SVG 做可愛形狀（不依賴外部圖）；seed 讓復原與存圖時長得一樣
+  const random = seededRandom(seed);
+  const between = (a, b) => random() * (b - a) + a;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox","0 0 120 120");
-  svg.setAttribute("width","86");
-  svg.setAttribute("height","86");
 
   const defs = document.createElementNS(svg.namespaceURI, "defs");
   const lg = document.createElementNS(svg.namespaceURI, "linearGradient");
@@ -744,11 +750,11 @@ function makeShape(name){
 
   const s1 = document.createElementNS(svg.namespaceURI, "stop");
   s1.setAttribute("offset","0%");
-  s1.setAttribute("stop-color", pick(["#ff5aa5","#4dd4ff","#ffb703","#7c4dff","#2dd4bf","#fb7185"]));
+  s1.setAttribute("stop-color", color1);
 
   const s2 = document.createElementNS(svg.namespaceURI, "stop");
   s2.setAttribute("offset","100%");
-  s2.setAttribute("stop-color", pick(["#ffe066","#ffd6e7","#b8f2ff","#d6c7ff","#c7ffd8","#fff"]));
+  s2.setAttribute("stop-color", color2);
 
   lg.appendChild(s1); lg.appendChild(s2);
   defs.appendChild(lg);
@@ -766,6 +772,12 @@ function makeShape(name){
     return p;
   }
 
+  function dot(cx, cy, r, fill){
+    const c = document.createElementNS(svg.namespaceURI, "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", r); c.setAttribute("fill", fill);
+    return c;
+  }
+
   if(name==="heart"){
     svg.appendChild(path("M60 103 C18 78, 10 48, 28 32 C40 20, 54 24, 60 35 C66 24, 80 20, 92 32 C110 48, 102 78, 60 103 Z"));
   } else if(name==="star"){
@@ -775,175 +787,253 @@ function makeShape(name){
     svg.appendChild(path("M48 58 L30 110 L60 90 L90 110 L72 58 Z"));
   } else if(name==="confetti"){
     svg.appendChild(path("M15 75 C25 30, 55 25, 75 35 C95 45, 105 70, 98 90 C85 105, 60 110, 38 102 C22 96, 12 90, 15 75 Z"));
-    // sprinkle dots
-    for(let i=0;i<10;i++){
-      const c = document.createElementNS(svg.namespaceURI, "circle");
-      c.setAttribute("cx", rand(30, 90));
-      c.setAttribute("cy", rand(40, 95));
-      c.setAttribute("r", rand(3, 6));
-      c.setAttribute("fill", "rgba(255,255,255,.9)");
-      svg.appendChild(c);
-    }
+    for(let i=0;i<10;i++) svg.appendChild(dot(between(30, 90), between(40, 95), between(3, 6), "rgba(255,255,255,.9)"));
   } else if(name==="snowman"){
-    // simplified snowman blob
     svg.appendChild(path("M60 18 C45 18, 34 29, 34 42 C34 52, 40 60, 48 63 C40 70, 34 80, 34 92 C34 106, 45 114, 60 114 C75 114, 86 106, 86 92 C86 80, 80 70, 72 63 C80 60, 86 52, 86 42 C86 29, 75 18, 60 18 Z"));
-    const eye1 = document.createElementNS(svg.namespaceURI, "circle");
-    eye1.setAttribute("cx","52"); eye1.setAttribute("cy","40"); eye1.setAttribute("r","4"); eye1.setAttribute("fill","#2b2b2b");
-    const eye2 = document.createElementNS(svg.namespaceURI, "circle");
-    eye2.setAttribute("cx","68"); eye2.setAttribute("cy","40"); eye2.setAttribute("r","4"); eye2.setAttribute("fill","#2b2b2b");
-    svg.appendChild(eye1); svg.appendChild(eye2);
+    svg.appendChild(dot(52, 40, 4, "#5b3a5e"));
+    svg.appendChild(dot(68, 40, 4, "#5b3a5e"));
   } else if(name==="cookie"){
     svg.appendChild(path("M60 15 C35 15, 15 35, 15 60 C15 85, 35 105, 60 105 C85 105, 105 85, 105 60 C105 35, 85 15, 60 15 Z"));
-    for(let i=0;i<10;i++){
-      const c = document.createElementNS(svg.namespaceURI, "circle");
-      c.setAttribute("cx", rand(30, 90));
-      c.setAttribute("cy", rand(30, 90));
-      c.setAttribute("r", rand(3, 7));
-      c.setAttribute("fill", "rgba(43,43,43,.35)");
-      svg.appendChild(c);
-    }
+    for(let i=0;i<10;i++) svg.appendChild(dot(between(30, 90), between(30, 90), between(3, 7), "rgba(91,58,94,.35)"));
   } else {
     svg.appendChild(path("M60 18 C35 18, 18 35, 18 60 C18 85, 35 102, 60 102 C85 102, 102 85, 102 60 C102 35, 85 18, 60 18 Z"));
   }
 
-  wrap.appendChild(svg);
-  return wrap;
-}
-
-function applyTransform(item){
-  const s = parseFloat(item.dataset.scale || "1");
-  const r = parseFloat(item.dataset.rot || "0");
-  item.style.transform = `translate(-50%, -50%) rotate(${r}deg) scale(${s})`;
+  return svg;
 }
 
 /* ---------------------------
    4) 拖動貼紙（Pointer Events）
 ---------------------------- */
-function startDragItem(item, e){
-  item.setPointerCapture(e.pointerId);
+function startDragItem(it, e){
+  const el = it.el;
+  try{ el.setPointerCapture(e.pointerId); }catch(err){}
   const rect = stage.getBoundingClientRect();
   const startX = e.clientX, startY = e.clientY;
-  const itemX = parseFloat(item.style.left), itemY = parseFloat(item.style.top);
+  const itemX = it.x, itemY = it.y;
+  let moved = false;
 
   SFX.twinkle();
 
   function onMove(ev){
     const dx = ev.clientX - startX;
     const dy = ev.clientY - startY;
-    item.style.left = clamp(itemX + dx, 0, rect.width) + "px";
-    item.style.top  = clamp(itemY + dy, 0, rect.height) + "px";
+    if(!moved){
+      if(Math.hypot(dx, dy) < 4) return;
+      moved = true;
+      pushUndo();
+      hidePop();
+    }
+    it.x = clamp(itemX + dx / rect.width * 100, 0, 100);
+    it.y = clamp(itemY + dy / rect.height * 100, 0, 100);
+    applyItem(it);
   }
-  function onUp(ev){
-    item.releasePointerCapture(e.pointerId);
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-    SFX.pop();
+  function onUp(){
+    el.removeEventListener("pointermove", onMove);
+    el.removeEventListener("pointerup", onUp);
+    el.removeEventListener("pointercancel", onUp);
+    if(moved){
+      SFX.pop();
+      showPop();
+    }
   }
 
-  window.addEventListener("pointermove", onMove);
-  window.addEventListener("pointerup", onUp);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerup", onUp);
+  el.addEventListener("pointercancel", onUp);
 }
 
-function selectItem(item){
-  if(selected) selected.classList.remove("selected");
-  selected = item;
+// 點卡片空白處取消選取
+card.addEventListener("pointerdown", (e) => {
+  if(e.target === card || e.target === stage) selectItem(null);
+});
+
+function selectItem(it){
+  if(selected) selected.el.classList.remove("selected");
+  selected = it;
   if(selected){
-    selected.classList.add("selected");
-    selected.style.zIndex = (++zCounter).toString();
+    selected.z = ++zCounter;
+    applyItem(selected);
+    selected.el.classList.add("selected");
+    showPop();
+  }else{
+    hidePop();
   }
 }
 
 /* ---------------------------
-   5) 右下工具：置頂置底、縮放
+   5) 選取貼紙的小工具列：刪除、旋轉、放大、縮小
 ---------------------------- */
-document.getElementById("btnBringFront").addEventListener("click", () => {
-  SFX.unlock(); SFX.twinkle();
+function showPop(){
   if(!selected) return;
-  selected.style.zIndex = (++zCounter).toString();
+  pop.classList.add("show");
+  const cardRect = card.getBoundingClientRect();
+  const itemRect = selected.el.getBoundingClientRect();
+  const border = card.clientLeft;
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  const innerW = card.clientWidth, innerH = card.clientHeight;
+  const centerX = itemRect.left + itemRect.width / 2 - cardRect.left - border;
+
+  let top = itemRect.bottom - cardRect.top - border + 16;
+  let above = false;
+  if(top + h > innerH - 8){
+    top = itemRect.top - cardRect.top - border - h - 16;
+    above = true;
+  }
+  top = clamp(top, 8, innerH - h - 8);
+  const left = clamp(centerX - w / 2, 8, innerW - w - 8);
+
+  pop.style.left = left + "px";
+  pop.style.top = top + "px";
+  pop.style.setProperty("--arrow-x", clamp(centerX - left, 24, w - 24) + "px");
+  pop.classList.toggle("above", above);
+}
+
+function hidePop(){
+  pop.classList.remove("show");
+}
+
+document.getElementById("btnDelete").addEventListener("click", () => {
+  if(!selected) return;
+  SFX.unlock(); SFX.firework();
+  pushUndo();
+  removeItem(selected);
 });
-document.getElementById("btnSendBack").addEventListener("click", () => {
-  SFX.unlock(); SFX.twinkle();
+document.getElementById("btnRotate").addEventListener("click", () => {
   if(!selected) return;
-  selected.style.zIndex = "1";
+  SFX.unlock(); SFX.twinkle();
+  pushUndo();
+  selected.r = +(selected.r + 30).toFixed(2);
+  applyItem(selected);
+  showPop();
 });
 document.getElementById("btnBigger").addEventListener("click", () => {
-  SFX.unlock(); SFX.twinkle();
   if(!selected) return;
-  selected.dataset.scale = (parseFloat(selected.dataset.scale || "1") + 0.12).toFixed(3);
-  applyTransform(selected);
+  SFX.unlock(); SFX.twinkle();
+  pushUndo();
+  selected.s = +Math.min(3, selected.s + 0.15).toFixed(3);
+  applyItem(selected);
+  showPop();
 });
 document.getElementById("btnSmaller").addEventListener("click", () => {
-  SFX.unlock(); SFX.twinkle();
   if(!selected) return;
-  selected.dataset.scale = Math.max(0.35, parseFloat(selected.dataset.scale || "1") - 0.12).toFixed(3);
-  applyTransform(selected);
+  SFX.unlock(); SFX.twinkle();
+  pushUndo();
+  selected.s = +Math.max(0.4, selected.s - 0.15).toFixed(3);
+  applyItem(selected);
+  showPop();
 });
 
-// Delete 刪除選取貼紙
-window.addEventListener("keydown", (e) => {
-  if((e.key === "Delete" || e.key === "Backspace") && selected){
-    SFX.unlock(); SFX.firework();
-    selected.remove();
-    selected = null;
-  }
-});
+window.addEventListener("resize", () => showPop());
 
 /* ---------------------------
-   6) 預先放好少量示範元素
+   6) 復原（最多 30 步）
 ---------------------------- */
-function addDemo(){
-  const rect = stage.getBoundingClientRect();
-  const demo = [
-    ["🎄", 120, 140, 1.15, -10],
-    ["🎁", 220, 270, 1.10, 8],
-    ["✨", 360, 180, 1.25, 0],
-    ["🎀", 520, 250, 1.00, -8],
-    ["shape:heart", 650, 170, 1.05, 12],
-    ["⛄", 700, 330, 1.08, -5],
-  ];
-  demo.forEach(([code,x,y,s,r]) => {
-    const item = createItem(code, x, y);
-    item.dataset.scale = s.toFixed(3);
-    item.dataset.rot = r.toFixed(2);
-    applyTransform(item);
-    stage.appendChild(item);
+const undoStack = [];
+const UNDO_LIMIT = 30;
+
+function snapshot(){
+  return JSON.stringify({
+    bg: card.dataset.bg,
+    title: cardTitle.textContent,
+    wish: cardWish.textContent,
+    items: items.map(({ el, ...data }) => data)
   });
 }
-addDemo();
 
-/* ---------------------------
-   7) 文字同步
----------------------------- */
-const wishText = document.getElementById("wishText");
-wishText.addEventListener("input", () => {
-  document.getElementById("cardWish").textContent = wishText.value.trim() || "祝你節日快樂！";
-});
+function pushUndo(state){
+  undoStack.push(state || snapshot());
+  if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+  syncUi();
+}
 
-/* ---------------------------
-   8) 背景風格切換
----------------------------- */
-document.getElementById("bgSelect").addEventListener("change", (e) => {
+function restore(json){
+  const state = JSON.parse(json);
+  clearItems();
+  setBackground(state.bg);
+  cardTitle.textContent = state.title;
+  cardWish.textContent = state.wish;
+  state.items
+    .sort((a, b) => a.z - b.z)
+    .forEach(data => addItem(data, false));
+}
+
+btnUndo.addEventListener("click", () => {
+  if(!undoStack.length) return;
   SFX.unlock(); SFX.magic();
-  const v = e.target.value;
-  const map = {
-    pinkBlue: `radial-gradient(700px 400px at 30% 20%, rgba(255,255,255,.9), transparent 55%),
-              radial-gradient(700px 400px at 80% 80%, rgba(255,255,255,.7), transparent 60%),
-              linear-gradient(135deg, rgba(255,90,165,.22), rgba(77,212,255,.22))`,
-    warmGold: `radial-gradient(700px 400px at 30% 20%, rgba(255,255,255,.9), transparent 55%),
-              radial-gradient(700px 400px at 70% 75%, rgba(255,255,255,.65), transparent 60%),
-              linear-gradient(135deg, rgba(255,183,3,.25), rgba(255,90,95,.18))`,
-    mintCandy:`radial-gradient(700px 400px at 30% 20%, rgba(255,255,255,.9), transparent 55%),
-              radial-gradient(700px 400px at 80% 80%, rgba(255,255,255,.7), transparent 60%),
-              linear-gradient(135deg, rgba(45,212,191,.24), rgba(255,90,165,.16))`,
-    nightStar:`radial-gradient(900px 500px at 30% 20%, rgba(255,255,255,.18), transparent 55%),
-              radial-gradient(900px 500px at 80% 80%, rgba(255,255,255,.14), transparent 60%),
-              linear-gradient(135deg, rgba(20,24,64,.78), rgba(124,77,255,.22))`
-  };
-  card.style.background = map[v] || map.pinkBlue;
+  restore(undoStack.pop());
+  syncUi();
+});
+
+function syncUi(){
+  btnUndo.disabled = undoStack.length === 0;
+  hint.hidden = items.length > 0;
+}
+
+/* ---------------------------
+   7) 卡片文字：直接點字修改
+---------------------------- */
+const DEFAULT_TEXT = new Map([
+  [cardTitle, "暖呼呼的節日賀卡 🎄"],
+  [cardWish, "祝你節日快樂！"]
+]);
+
+[cardTitle, cardWish].forEach((el) => {
+  let before = null;
+  let textBefore = "";
+
+  el.addEventListener("focus", () => {
+    before = snapshot();
+    textBefore = el.textContent;
+    selectItem(null);
+  });
+  el.addEventListener("blur", () => {
+    const text = el.textContent.replace(/\s+/g, " ").trim();
+    el.textContent = text || DEFAULT_TEXT.get(el);
+    if(el.textContent !== textBefore) pushUndo(before);
+  });
+  el.addEventListener("keydown", (e) => {
+    if(e.key === "Enter"){
+      e.preventDefault();
+      el.blur();
+    }
+  });
+  // 貼上時只留純文字
+  el.addEventListener("paste", (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text").replace(/\s+/g, " ");
+    document.execCommand("insertText", false, text);
+  });
+});
+
+document.getElementById("btnPen").addEventListener("click", () => {
+  cardTitle.focus();
+  const range = document.createRange();
+  range.selectNodeContents(cardTitle);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
 });
 
 /* ---------------------------
-   9) 按鈕：慶祝、驚喜、清空
+   8) 背景切換
+---------------------------- */
+function setBackground(bg){
+  card.dataset.bg = bg;
+  document.querySelectorAll(".swatch").forEach(s => s.setAttribute("aria-checked", String(s.dataset.bg === bg)));
+}
+
+document.querySelectorAll(".swatch").forEach((swatch) => {
+  swatch.addEventListener("click", () => {
+    if(card.dataset.bg === swatch.dataset.bg) return;
+    SFX.unlock(); SFX.magic();
+    pushUndo();
+    setBackground(swatch.dataset.bg);
+  });
+});
+
+/* ---------------------------
+   9) 按鈕：煙火、驚喜、清空
 ---------------------------- */
 document.getElementById("btnCelebrate").addEventListener("click", () => {
   SFX.unlock(); SFX.firework();
@@ -952,148 +1042,311 @@ document.getElementById("btnCelebrate").addEventListener("click", () => {
 
 document.getElementById("btnShuffle").addEventListener("click", () => {
   SFX.unlock(); SFX.magic();
-  // 隨機放 10 個可愛貼紙
-  const rect = stage.getBoundingClientRect();
-  for(let i=0;i<10;i++){
-    const pool = [].concat(STICKERS.cute, STICKERS.sparkle, STICKERS.holiday, STICKERS.shapes);
-    const code = pick(pool);
-    const x = rand(60, rect.width - 60);
-    const y = rand(90, rect.height - 60);
-    const item = createItem(code, x, y);
-    item.dataset.scale = rand(0.7, 1.35).toFixed(3);
-    item.dataset.rot = rand(-25, 25).toFixed(2);
-    applyTransform(item);
-    stage.appendChild(item);
+  pushUndo();
+  for(let i = 0; i < 6; i++){
+    const spot = findFreeSpot();
+    addItem(newItemData(pick(ALL_STICKERS), spot.x, spot.y), true);
   }
+  selectItem(null);
   burstConfetti(18);
 });
 
 document.getElementById("btnClear").addEventListener("click", () => {
+  if(!items.length) return;
   SFX.unlock(); SFX.firework();
-  [...stage.querySelectorAll(".item")].forEach(n => n.remove());
-  selected = null;
-  // 放回一點示範
-  addDemo();
+  pushUndo();
+  clearItems();
+});
+
+// 電腦鍵盤：Delete 刪除選取貼紙、Ctrl/Cmd + Z 復原
+window.addEventListener("keydown", (e) => {
+  if(e.target.isContentEditable) return;
+  if((e.key === "Delete" || e.key === "Backspace") && selected){
+    e.preventDefault();
+    document.getElementById("btnDelete").click();
+  }
+  if(e.key.toLowerCase() === "z" && (e.metaKey || e.ctrlKey)){
+    e.preventDefault();
+    btnUndo.click();
+  }
 });
 
 /* ---------------------------
-   10) 彩紙動畫（簡單 DOM 粒子）
+   10) 存成圖片（用 canvas 重畫卡片，不含選取框與工具列）
+---------------------------- */
+const BG_COLORS = {
+  pinkBlue: ["#ffd3e6", "#cfeeff", 0.9],
+  warmGold: ["#ffe7a8", "#ffc2a8", 0.9],
+  mintCandy: ["#c9f5e1", "#ffd9ec", 0.9],
+  nightStar: ["#3b3f8f", "#8a6cf0", 0.18]
+};
+
+document.getElementById("btnSave").addEventListener("click", async () => {
+  SFX.unlock(); SFX.twinkle();
+  if(document.activeElement && document.activeElement.isContentEditable) document.activeElement.blur();
+  try{
+    const blob = await renderCardImage();
+    const a = document.createElement("a");
+    const now = new Date();
+    const stamp = now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0")
+      + "-" + String(now.getHours()).padStart(2, "0") + String(now.getMinutes()).padStart(2, "0");
+    a.href = URL.createObjectURL(blob);
+    a.download = `賀卡-${stamp}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    burstConfetti(16);
+  }catch(err){
+    console.error(err);
+    alert("存圖失敗了，請再按一次「存圖」。");
+  }
+});
+
+async function renderCardImage(){
+  await document.fonts.ready;
+  const cardRect = card.getBoundingClientRect();
+  const k = 1500 / cardRect.width;
+  const W = Math.round(cardRect.width * k), H = Math.round(cardRect.height * k);
+  const border = card.clientLeft * k;
+  const radius = 30 * k;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // 白色卡紙邊框（圓角外也填白，避免傳到通訊軟體時透明處變黑）
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+
+  // 背景
+  ctx.save();
+  roundRect(ctx, border, border, W - border * 2, H - border * 2, radius - border);
+  ctx.clip();
+  const [c1, c2, glow] = BG_COLORS[card.dataset.bg] || BG_COLORS.pinkBlue;
+  const lg = ctx.createLinearGradient(0, 0, W, H);
+  lg.addColorStop(0, c1);
+  lg.addColorStop(1, c2);
+  ctx.fillStyle = lg;
+  ctx.fillRect(0, 0, W, H);
+  const rg = ctx.createRadialGradient(W * 0.25, H * 0.2, 0, W * 0.25, H * 0.2, W * 0.56);
+  rg.addColorStop(0, `rgba(255,255,255,${glow})`);
+  rg.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = rg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 標題區塊
+  const rel = (r) => ({
+    x: (r.left - cardRect.left) * k,
+    y: (r.top - cardRect.top) * k,
+    w: r.width * k,
+    h: r.height * k
+  });
+  const tb = document.getElementById("titleBlock");
+  const tbBox = rel(tb.getBoundingClientRect());
+  ctx.save();
+  ctx.shadowColor = "rgba(255,143,184,.25)";
+  ctx.shadowOffsetY = 4 * k;
+  roundRect(ctx, tbBox.x, tbBox.y, tbBox.w, tbBox.h, parseFloat(getComputedStyle(tb).borderTopLeftRadius) * k);
+  ctx.fillStyle = "rgba(255,255,255,.85)";
+  ctx.fill();
+  ctx.restore();
+  drawText(ctx, cardTitle, rel(cardTitle.getBoundingClientRect()), k);
+  drawText(ctx, cardWish, rel(cardWish.getBoundingClientRect()), k);
+
+  // 貼紙（依圖層順序）
+  const sorted = items.slice().sort((a, b) => a.z - b.z);
+  for(const it of sorted){
+    const r = it.el.getBoundingClientRect();
+    const cx = (r.left + r.width / 2 - cardRect.left) * k;
+    const cy = (r.top + r.height / 2 - cardRect.top) * k;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(it.r * Math.PI / 180);
+    ctx.scale(it.s, it.s);
+    ctx.shadowColor = "rgba(91,58,94,.18)";
+    ctx.shadowBlur = 6 * k;
+    ctx.shadowOffsetY = 6 * k;
+    if(it.code.startsWith("shape:")){
+      const svg = it.el.querySelector("svg");
+      const size = parseFloat(getComputedStyle(svg).width) * k;
+      const img = await loadSvgImage(svg);
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    }else{
+      const emoji = it.el.querySelector(".emoji");
+      const fs = parseFloat(getComputedStyle(emoji).fontSize) * k;
+      ctx.font = `${fs}px ${getComputedStyle(emoji).fontFamily}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(it.code, 0, fs * 0.04);
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png");
+  });
+}
+
+function drawText(ctx, el, box, k){
+  const cs = getComputedStyle(el);
+  const fs = parseFloat(cs.fontSize) * k;
+  const lineHeight = fs * 1.3;
+  ctx.font = `${cs.fontWeight} ${fs}px ${cs.fontFamily}`;
+  ctx.fillStyle = cs.color;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+
+  // 依元素寬度逐字換行
+  const lines = [];
+  let line = "";
+  for(const ch of Array.from(el.textContent)){
+    if(ctx.measureText(line + ch).width > box.w + 1 && line){
+      lines.push(line);
+      line = ch;
+    }else{
+      line += ch;
+    }
+  }
+  if(line) lines.push(line);
+  lines.forEach((l, i) => ctx.fillText(l, box.x, box.y + lineHeight * (i + 0.5)));
+}
+
+function loadSvgImage(svg){
+  return new Promise((resolve, reject) => {
+    const xml = new XMLSerializer().serializeToString(svg);
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+  });
+}
+
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------------------------
+   11) 彩紙動畫
 ---------------------------- */
 function burstConfetti(count){
   const rect = card.getBoundingClientRect();
+  const colors = ["#ff8fb8","#b9a2ff","#7fd0ff","#ffd76a","#ffb08a","#84e0b2"];
   for(let i=0;i<count;i++){
     const p = document.createElement("div");
-    p.style.position = "fixed";
-    p.style.left = (rect.left + rect.width/2 + rand(-60,60)) + "px";
-    p.style.top  = (rect.top + 80 + rand(-10,10)) + "px";
+    p.className = "confetti";
     p.style.width = rand(8, 14) + "px";
     p.style.height = rand(10, 18) + "px";
-    p.style.borderRadius = "4px";
-    p.style.background = pick(["#ff5aa5","#4dd4ff","#ffb703","#7c4dff","#2dd4bf","#fb7185","#34d399"]);
-    p.style.boxShadow = "0 6px 14px rgba(0,0,0,.15)";
-    p.style.zIndex = 80;
-    p.style.pointerEvents = "none";
+    p.style.background = pick(colors);
     document.body.appendChild(p);
 
-    const vx = rand(-2.2, 2.2);
-    const vy = rand(-5.0, -2.4);
+    let x = rect.left + rect.width/2 + rand(-60,60);
+    let y = rect.top + rect.height * 0.25 + rand(-10,10);
+    const vx = rand(-2.2, 2.2) * 3;
+    const vy = rand(-5.0, -2.4) * 3;
     const spin = rand(-14, 14);
-
-    let x = parseFloat(p.style.left);
-    let y = parseFloat(p.style.top);
     let t = 0;
 
-    const id = setInterval(() => {
+    function step(){
       t++;
-      x += vx * 3;
-      y += vy * 3 + t * 0.25;
-      p.style.left = x + "px";
-      p.style.top  = y + "px";
-      p.style.transform = `rotate(${t*spin}deg)`;
+      x += vx;
+      y += vy + t * 0.25;
+      p.style.transform = `translate(${x}px, ${y}px) rotate(${t*spin}deg)`;
       p.style.opacity = String(Math.max(0, 1 - t/80));
-      if(t > 80){
-        clearInterval(id);
-        p.remove();
-      }
-    }, 16);
+      if(t > 80){ p.remove(); return; }
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   }
 }
 
 /* ---------------------------
-   11) 雪花飄落
+   12) 雪花飄落
 ---------------------------- */
 const snowLayer = document.getElementById("snowLayer");
-const snowToggle = document.getElementById("snowToggle");
-const snowLevel  = document.getElementById("snowLevel");
-
+const btnSnow = document.getElementById("btnSnow");
 let snowTimer = null;
 
-function startSnow(){
-  stopSnow();
-  if(!snowToggle.checked) return;
-
-  const intensity = parseInt(snowLevel.value, 10); // 0-100
-  const interval = Math.max(60, 260 - intensity*2); // 越高越密
-
-  snowTimer = setInterval(() => {
-    if(!snowToggle.checked) return;
-    spawnFlake();
-  }, interval);
-}
-
-function stopSnow(){
+function setSnow(on){
+  btnSnow.setAttribute("aria-pressed", String(on));
   if(snowTimer) clearInterval(snowTimer);
   snowTimer = null;
+  if(on) snowTimer = setInterval(() => { if(!document.hidden) spawnFlake(); }, 160);
 }
 
 function spawnFlake(){
   const f = document.createElement("div");
   f.className = "flake";
-  const size = rand(10, 24);
-  f.style.fontSize = size + "px";
+  f.style.fontSize = rand(10, 24) + "px";
   f.textContent = pick(["❄️","❅","❆","✨","·"]);
   f.style.left = rand(-5, 105) + "vw";
   f.style.opacity = rand(0.45, 0.95);
   const drift = rand(-20, 20);
   const duration = rand(6.5, 13.5);
-
-  const startX = parseFloat(f.style.left);
-  const endX = startX + drift;
-
   snowLayer.appendChild(f);
 
   const start = performance.now();
   function anim(now){
     const t = (now - start) / (duration * 1000);
-    if(t >= 1){
-      f.remove();
-      return;
-    }
-    const y = -10 + t * 120; // vh
-    const x = startX + (endX - startX) * (0.5 - 0.5*Math.cos(Math.PI*t)); // smooth drift
-    f.style.transform = `translate(${x-startX}vw, ${y}vh) rotate(${t*180}deg)`;
+    if(t >= 1){ f.remove(); return; }
+    const y = t * 120; // vh
+    const x = drift * (0.5 - 0.5*Math.cos(Math.PI*t));
+    f.style.transform = `translate(${x}vw, ${y}vh) rotate(${t*180}deg)`;
     requestAnimationFrame(anim);
   }
   requestAnimationFrame(anim);
 }
 
-snowToggle.addEventListener("change", () => {
+btnSnow.addEventListener("click", () => {
   SFX.unlock(); SFX.twinkle();
-  startSnow();
+  setSnow(btnSnow.getAttribute("aria-pressed") !== "true");
 });
-snowLevel.addEventListener("input", () => startSnow());
-startSnow();
 
 /* ---------------------------
-   12) 工具函式
+   13) 工具函式
 ---------------------------- */
 function rand(a,b){ return Math.random()*(b-a)+a; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+function seededRandom(seed){
+  let s = seed % 2147483647;
+  if(s <= 0) s += 2147483646;
+  return () => (s = s * 16807 % 2147483647) / 2147483647;
+}
+function toStagePercent(clientX, clientY){
+  const rect = stage.getBoundingClientRect();
+  return {
+    x: clamp((clientX - rect.left) / rect.width * 100, 0, 100),
+    y: clamp((clientY - rect.top) / rect.height * 100, 0, 100)
+  };
+}
 
 /* ---------------------------
-   13) 初次互動自動解鎖音效
+   14) 開場：示範貼紙、托盤、雪花
 ---------------------------- */
+[
+  ["🎄", 14, 55, 1.15, -10],
+  ["🎁", 28, 75, 1.10, 8],
+  ["✨", 48, 40, 1.20, 0],
+  ["🎀", 66, 68, 1.00, -8],
+  ["shape:heart", 80, 32, 1.05, 12],
+  ["⛄", 86, 72, 1.08, -5]
+].forEach(([code, x, y, s, r]) => {
+  addItem(Object.assign(newItemData(code, x, y), { s, r }), false);
+});
+
+renderTray("cute");
+setSnow(!reduceMotion);
+syncUi();
+
+// 初次互動自動解鎖音效
 window.addEventListener("pointerdown", () => SFX.unlock(), { once:true });
 </script>
 </body>
