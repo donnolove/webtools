@@ -1,31 +1,52 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Tools</title>
+    <title>工作台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #f6f3ee;
-            --surface: rgba(255, 255, 255, 0.76);
-            --surface-strong: #ffffff;
-            --text: #161616;
-            --muted: #6d6a66;
-            --line: rgba(22, 22, 22, 0.1);
-            --accent: #2f5a4c;
-            --accent-soft: #dbe7e2;
-            --shadow: 0 12px 40px rgba(26, 26, 26, 0.06);
+            --bg: #dcdcd8;
+            --ink: #1f1f1e;
+            --muted: #5b5b57;
+            --line: rgba(31, 31, 30, 0.18);
+            --gray-card: #6f6f6b;
+            --on-gray: #ffffff;
+            --focus-red: #c8241c;
+            --tag-bg: rgba(31, 31, 30, 0.08);
+            --btn-bg: #1f1f1e;
+            --btn-text: #ffffff;
+            --game: #f2c230;
+            --row-hover: rgba(31, 31, 30, 0.06);
+            --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+            --font-num: "Barlow Condensed", "Noto Sans TC", sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1d1d1c;
+                --ink: #ececea;
+                --muted: #a3a39e;
+                --line: rgba(236, 236, 234, 0.16);
+                --gray-card: #4f4f4c;
+                --tag-bg: rgba(236, 236, 234, 0.1);
+                --btn-bg: #ececea;
+                --btn-text: #1d1d1c;
+                --row-hover: rgba(236, 236, 234, 0.06);
+            }
         }
 
         * { box-sizing: border-box; }
 
         body {
             margin: 0;
-            font-family: Inter, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-            color: var(--text);
-            background:
-                radial-gradient(circle at top left, rgba(219, 231, 226, 0.9), transparent 22%),
-                linear-gradient(180deg, #f8f6f2 0%, var(--bg) 100%);
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--font-body);
+            line-height: 1.5;
         }
 
         a {
@@ -34,129 +55,137 @@
         }
 
         .page {
-            width: min(1160px, calc(100% - 28px));
+            display: grid;
+            grid-template-columns: 340px minmax(0, 1fr);
+            gap: 48px;
+            width: min(1200px, 100% - 64px);
+            min-height: 100vh;
             margin: 0 auto;
-            padding: 18px 0 40px;
+            padding: 40px 0;
         }
 
-        .shell {
-            border: 1px solid rgba(22, 22, 22, 0.08);
-            background: rgba(255, 255, 255, 0.52);
-            backdrop-filter: blur(16px);
-            border-radius: 30px;
-            box-shadow: var(--shadow);
+        /* 觀景窗 */
+        .finder {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewfinder {
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            aspect-ratio: 4 / 5;
+            padding: 28px;
+            background: var(--gray-card);
+            color: var(--on-gray);
             overflow: hidden;
         }
 
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            padding: 18px 24px;
-            border-bottom: 1px solid var(--line);
+        .thirds {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(to right, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.18) calc(33.33% - 0.5px), rgba(255, 255, 255, 0.18) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px)),
+                linear-gradient(to right, transparent calc(66.66% - 0.5px), rgba(255, 255, 255, 0.18) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.18) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
+                linear-gradient(to bottom, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.18) calc(33.33% - 0.5px), rgba(255, 255, 255, 0.18) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px)),
+                linear-gradient(to bottom, transparent calc(66.66% - 0.5px), rgba(255, 255, 255, 0.18) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.18) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px));
         }
 
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 0;
+        .corner {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border: 0 solid var(--on-gray);
         }
 
-        .brand-mark {
-            width: 12px;
-            height: 12px;
-            border-radius: 999px;
-            background: var(--accent);
-            box-shadow: 0 0 0 8px rgba(47, 90, 76, 0.1);
-            flex: 0 0 auto;
+        .corner-tl { top: 14px; left: 14px; border-top-width: 2px; border-left-width: 2px; }
+        .corner-tr { top: 14px; right: 14px; border-top-width: 2px; border-right-width: 2px; }
+        .corner-bl { bottom: 14px; left: 14px; border-bottom-width: 2px; border-left-width: 2px; }
+        .corner-br { bottom: 14px; right: 14px; border-bottom-width: 2px; border-right-width: 2px; }
+
+        .af-point {
+            position: absolute;
+            top: 38%;
+            left: 50%;
+            width: 44px;
+            height: 32px;
+            border: 2px solid var(--focus-red);
+            transform: translate(-50%, -50%);
+            animation: focus-lock 900ms cubic-bezier(0.3, 0.7, 0.2, 1) 250ms both;
         }
 
-        .brand strong {
-            display: block;
-            font-size: 0.98rem;
-            letter-spacing: -0.02em;
+        .af-point::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: var(--focus-red);
+            transform: translate(-50%, -50%);
         }
 
-        .brand span {
-            display: block;
-            font-size: 0.84rem;
-            color: var(--muted);
-            margin-top: 2px;
+        @keyframes focus-lock {
+            0%   { transform: translate(-50%, -50%) scale(1.9); border-color: rgba(255, 255, 255, 0.55); }
+            55%  { transform: translate(-50%, -50%) scale(0.88); border-color: rgba(255, 255, 255, 0.9); }
+            75%  { transform: translate(-50%, -50%) scale(1.04); border-color: var(--focus-red); }
+            100% { transform: translate(-50%, -50%) scale(1); border-color: var(--focus-red); }
         }
 
-        .top-meta {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 14px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.72);
-            border: 1px solid var(--line);
-            color: var(--muted);
-            font-size: 0.84rem;
-            white-space: nowrap;
-        }
-
-        .intro {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 24px;
-            padding: 26px 24px 18px;
-            align-items: end;
-        }
-
-        .eyebrow {
-            display: inline-block;
-            margin-bottom: 10px;
-            font-size: 0.75rem;
-            letter-spacing: 0.16em;
-            text-transform: uppercase;
-            color: var(--muted);
+        .finder-text {
+            position: relative;
         }
 
         h1 {
             margin: 0;
-            font-size: clamp(2rem, 4.8vw, 3.5rem);
-            letter-spacing: -0.06em;
-            line-height: 0.95;
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: 0.02em;
         }
 
-        .intro p {
-            margin: 14px 0 0;
-            max-width: 44rem;
-            color: var(--muted);
-            line-height: 1.75;
-            font-size: 0.98rem;
+        .finder-text p {
+            margin: 12px 0 0;
+            text-wrap: balance;
+            font-size: 0.9rem;
+            line-height: 1.6;
         }
 
-        .stat-row {
+        .readout {
             display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
+            gap: 18px;
+            align-items: center;
+            margin: 0;
+            padding: 10px 2px;
+            border-bottom: 1px solid var(--line);
+            font-family: var(--font-num);
+            font-size: 1.15rem;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
         }
 
-        .stat-chip {
-            min-width: 118px;
-            padding: 14px 16px;
-            border-radius: 18px;
-            background: var(--surface);
-            border: 1px solid var(--line);
+        .readout-dot {
+            width: 8px;
+            height: 8px;
+            margin-left: auto;
+            border-radius: 50%;
+            background: var(--focus-red);
         }
 
-        .stat-chip strong {
-            display: block;
-            font-size: 1rem;
-            letter-spacing: -0.03em;
-        }
-
-        .stat-chip span {
-            display: block;
-            margin-top: 4px;
-            font-size: 0.8rem;
+        .privacy {
+            margin: 0;
+            padding-top: 12px;
             color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        /* 右側內容 */
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 36px;
+            min-width: 0;
         }
 
         .section-head {
@@ -164,267 +193,305 @@
             justify-content: space-between;
             align-items: baseline;
             gap: 12px;
-            padding: 12px 24px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--ink);
         }
 
-        .section-head h2 {
+        h2 {
             margin: 0;
-            font-size: 1.05rem;
-            letter-spacing: -0.03em;
+            font-size: 1.25rem;
+            font-weight: 700;
         }
 
         .section-head span {
-            font-size: 0.8rem;
             color: var(--muted);
+            font-size: 0.8rem;
         }
 
-        .tools-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px;
-            padding: 12px 24px 24px;
+        .tool-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .tool-list li {
+            border-bottom: 1px solid var(--line);
         }
 
         .tool {
-            border: 1px solid var(--line);
-            background: var(--surface-strong);
-            border-radius: 22px;
-            padding: 18px 18px 16px;
             display: grid;
-            gap: 18px;
-            transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-        }
-
-        .tool:hover {
-            transform: translateY(-3px);
-            border-color: rgba(47, 90, 76, 0.22);
-            box-shadow: 0 12px 24px rgba(30, 40, 36, 0.06);
-        }
-
-        .tool-top,
-        .tool-bottom {
-            display: flex;
-            justify-content: space-between;
+            grid-template-columns: 150px minmax(0, 1fr) auto auto;
+            gap: 20px;
             align-items: center;
-            gap: 10px;
+            margin: 0 -14px;
+            padding: 14px;
         }
 
-        .tool-no {
-            font-size: 0.78rem;
+        .tool-name {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .tool-desc {
             color: var(--muted);
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
+            text-wrap: pretty;
+            font-size: 0.875rem;
         }
 
-        .tool-tag {
+        .tag {
+            justify-self: start;
+            padding: 2px 8px;
+            background: var(--tag-bg);
+            font-family: var(--font-num);
+            font-size: 0.95rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .btn {
             display: inline-flex;
             align-items: center;
-            min-height: 30px;
-            padding: 0 10px;
-            border-radius: 999px;
-            background: var(--accent-soft);
-            color: var(--accent);
-            font-size: 0.76rem;
-            font-weight: 600;
-        }
-
-        .tool h2 {
-            margin: 0 0 8px;
-            font-size: 1.22rem;
-            letter-spacing: -0.04em;
-        }
-
-        .tool p {
-            margin: 0;
-            color: var(--muted);
-            line-height: 1.7;
-            font-size: 0.92rem;
-        }
-
-        .tool-bottom {
-            padding-top: 14px;
-            border-top: 1px solid var(--line);
-            color: var(--muted);
+            justify-content: center;
+            gap: 6px;
+            min-height: 40px;
+            padding: 0 16px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
             font-size: 0.9rem;
+            font-weight: 700;
+            white-space: nowrap;
+            transition: background-color 120ms ease, color 120ms ease;
         }
 
-        .tool-arrow {
-            color: var(--accent);
+        .btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .tool:hover,
+        .tool:focus-visible {
+            background: var(--row-hover);
+        }
+
+        .tool:hover .btn,
+        .tool:focus-visible .btn,
+        .game:hover .btn,
+        .game:focus-visible .btn {
+            background: var(--focus-red);
+            color: #ffffff;
+        }
+
+        .tool:focus-visible,
+        .game:focus-visible {
+            outline: 3px solid var(--focus-red);
+            outline-offset: 2px;
+        }
+
+        /* 遊戲 */
+        .game-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            margin: 14px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .game {
+            display: grid;
+            grid-template-columns: 120px minmax(0, 1fr);
+            gap: 16px;
+            align-items: center;
+            padding: 12px;
+            border: 2px solid var(--ink);
+        }
+
+        .game-thumb {
+            aspect-ratio: 4 / 3;
+            background:
+                radial-gradient(circle at 30% 35%, #ffffff 0 3px, transparent 4px),
+                radial-gradient(circle at 68% 28%, #c8241c 0 4px, transparent 5px),
+                radial-gradient(circle at 52% 62%, #ffffff 0 2px, transparent 3px),
+                radial-gradient(circle at 22% 72%, #2f6fd0 0 3px, transparent 4px),
+                radial-gradient(circle at 80% 70%, #ffffff 0 3px, transparent 4px),
+                var(--game);
+        }
+
+        .game-name {
+            display: block;
             font-size: 1.05rem;
+            font-weight: 700;
         }
 
-        .tool.tool-wide {
-            grid-column: span 2;
+        .game-desc {
+            display: block;
+            text-wrap: balance;
+            margin: 2px 0 10px;
+            color: var(--muted);
+            font-size: 0.875rem;
         }
 
-        @media (max-width: 980px) {
-            .intro,
-            .tools-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-
-            .intro {
-                display: block;
-            }
-
-            .stat-row {
-                margin-top: 18px;
-                justify-content: flex-start;
-            }
-
-            .tool.tool-wide {
-                grid-column: span 2;
-            }
+        @media (prefers-reduced-motion: reduce) {
+            .af-point { animation: none; }
+            .btn { transition: none; }
         }
 
-        @media (max-width: 720px) {
+        @media (max-width: 960px) {
             .page {
-                width: min(100% - 18px, 1160px);
-                padding-top: 10px;
-            }
-
-            .shell {
-                border-radius: 24px;
-            }
-
-            .topbar,
-            .intro,
-            .section-head,
-            .tools-grid {
-                padding-left: 16px;
-                padding-right: 16px;
-            }
-
-            .topbar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .tools-grid {
                 grid-template-columns: 1fr;
+                gap: 32px;
+                width: min(720px, 100% - 32px);
+                min-height: 0;
+                padding: 16px 0 32px;
             }
 
-            .tool.tool-wide {
-                grid-column: auto;
+            .viewfinder {
+                aspect-ratio: auto;
+                height: 200px;
+                padding: 28px 44px;
+            }
+
+            .af-point {
+                top: 36%;
+                left: 78%;
+            }
+
+            h1 { font-size: 2.5rem; }
+        }
+
+        @media (max-width: 600px) {
+            .viewfinder { height: 170px; }
+
+            h1 { font-size: 2rem; }
+
+            .tool {
+                grid-template-columns: minmax(0, 1fr) auto;
+                row-gap: 8px;
+            }
+
+            .tool-desc { grid-column: 1 / -1; }
+
+            .tool .btn { min-height: 44px; }
+
+            .game-list { grid-template-columns: 1fr; }
+
+            .game .btn {
+                display: flex;
+                min-height: 44px;
             }
         }
     </style>
 </head>
 <body>
     <main class="page">
-        <section class="shell">
-            <header class="topbar">
-                <div class="brand">
-                    <span class="brand-mark"></span>
-                    <div>
-                        <strong>Web Tools</strong>
-                        <span>影像處理與互動工具總覽</span>
-                    </div>
+        <section class="finder">
+            <div class="viewfinder">
+                <span class="thirds" aria-hidden="true"></span>
+                <span class="corner corner-tl" aria-hidden="true"></span>
+                <span class="corner corner-tr" aria-hidden="true"></span>
+                <span class="corner corner-bl" aria-hidden="true"></span>
+                <span class="corner corner-br" aria-hidden="true"></span>
+                <span class="af-point" aria-hidden="true"></span>
+                <div class="finder-text">
+                    <h1>工作台</h1>
+                    <p>照片工具與互動小作品，全部在瀏覽器裡完成。</p>
                 </div>
-                <div class="top-meta">Photo tools collection</div>
-            </header>
-
-            <section class="intro">
-                <div>
-                    <span class="eyebrow">Web Tools</span>
-                    <h1>影像工具與互動功能</h1>
-                    <p>整理常用的影像處理與互動功能，讓照片分析、浮水印、相框與編輯流程都能快速開始。</p>
-                </div>
-            </section>
-
-            <div class="section-head">
-                <h2>Tools</h2>
-                <span>影像處理工具</span>
             </div>
-            <section class="tools-grid">
-                <a href="./tools/lens-analyzer/index.html" target="_blank" class="tool">
-                    <div class="tool-top">
-                        <span class="tool-no">01</span>
-                        <span class="tool-tag">EXIF</span>
-                    </div>
-                    <div>
-                        <h2>鏡頭分析器</h2>
-                        <p>讀取照片資訊、整理焦段與拍攝資料，快速檢查鏡頭使用狀況。</p>
-                    </div>
-                    <div class="tool-bottom">
-                        <span>新分頁開啟</span>
-                        <span class="tool-arrow">→</span>
-                    </div>
-                </a>
-
-                <a href="./tools/watermask.html" target="_blank" class="tool">
-                    <div class="tool-top">
-                        <span class="tool-no">02</span>
-                        <span class="tool-tag">Watermark</span>
-                    </div>
-                    <div>
-                        <h2>浮水印工具</h2>
-                        <p>替圖片加入文字或圖像浮水印，流程單純，輸出結果清楚。</p>
-                    </div>
-                    <div class="tool-bottom">
-                        <span>新分頁開啟</span>
-                        <span class="tool-arrow">→</span>
-                    </div>
-                </a>
-
-                <a href="./tools/photoFrame.html" target="_blank" class="tool">
-                    <div class="tool-top">
-                        <span class="tool-no">03</span>
-                        <span class="tool-tag">Frame</span>
-                    </div>
-                    <div>
-                        <h2>Photo Frame Maker</h2>
-                        <p>幫照片套用相框與輸出格式，適合快速生成分享或展示用圖片。</p>
-                    </div>
-                    <div class="tool-bottom">
-                        <span>新分頁開啟</span>
-                        <span class="tool-arrow">→</span>
-                    </div>
-                </a>
-
-                <a href="./tools/editor.html" target="_blank" class="tool">
-                    <div class="tool-top">
-                        <span class="tool-no">04</span>
-                        <span class="tool-tag">Editor</span>
-                    </div>
-                    <div>
-                        <h2>圖片編輯器</h2>
-                        <p>集中處理裁切、調整與基礎編修，適合作為整體工作流程的最後一步。</p>
-                    </div>
-                    <div class="tool-bottom">
-                        <span>新分頁開啟</span>
-                        <span class="tool-arrow">→</span>
-                    </div>
-                </a>
-            </section>
-
-            <div class="section-head">
-                <h2>Games</h2>
-                <span>互動與小遊戲</span>
-            </div>
-            <section class="tools-grid">
-                <a href="./games/card/index.html" target="_blank" class="tool">
-                    <div class="tool-top">
-                        <span class="tool-no">01</span>
-                        <span class="tool-tag">Interactive</span>
-                    </div>
-                    <div>
-                        <h2>互動遊戲</h2>
-                        <p>以輕量互動與小遊戲形式呈現內容，適合展示、體驗與玩法測試。</p>
-                    </div>
-                    <div class="tool-bottom">
-                        <span>新分頁開啟</span>
-                        <span class="tool-arrow">→</span>
-                    </div>
-                </a>
-            </section>
+            <p class="readout" aria-hidden="true">
+                <span data-readout>35mm</span>
+                <span data-readout>f/2.0</span>
+                <span data-readout>1/250</span>
+                <span data-readout>ISO 200</span>
+                <span class="readout-dot"></span>
+            </p>
+            <p class="privacy">照片只在你的瀏覽器處理，不會上傳到任何伺服器。</p>
         </section>
+
+        <div class="content">
+            <section aria-labelledby="tools-title">
+                <div class="section-head">
+                    <h2 id="tools-title">工具</h2>
+                    <span>新分頁開啟</span>
+                </div>
+                <ul class="tool-list">
+                    <li>
+                        <a class="tool" href="./tools/lens-analyzer/index.html" target="_blank" rel="noopener">
+                            <span class="tool-name">鏡頭分析器</span>
+                            <span class="tool-desc">拖入整個資料夾，統計最常用的焦段、光圈、快門與 ISO。</span>
+                            <span class="tag">EXIF 統計</span>
+                            <span class="btn">開啟<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12"/></svg></span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="tool" href="./tools/watermask.html" target="_blank" rel="noopener">
+                            <span class="tool-name">批次浮水印</span>
+                            <span class="tool-desc">一次替多張照片蓋上浮水印，打包下載。</span>
+                            <span class="tag">多張 → ZIP</span>
+                            <span class="btn">開啟<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12"/></svg></span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="tool" href="./tools/photoFrame.html" target="_blank" rel="noopener">
+                            <span class="tool-name">相框製作</span>
+                            <span class="tool-desc">替照片加上邊框與拍攝資訊列，輸出分享用圖片。</span>
+                            <span class="tag">邊框 + 資訊列</span>
+                            <span class="btn">開啟<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12"/></svg></span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="tool" href="./tools/editor.html" target="_blank" rel="noopener">
+                            <span class="tool-name">修圖</span>
+                            <span class="tool-desc">用 RGB 通道與色相、飽和、亮度、對比調整，存成 JPG。</span>
+                            <span class="tag">RGB / HSL</span>
+                            <span class="btn">開啟<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12"/></svg></span>
+                        </a>
+                    </li>
+                </ul>
+            </section>
+
+            <section aria-labelledby="games-title">
+                <div class="section-head">
+                    <h2 id="games-title">遊戲</h2>
+                    <span>小作品展示</span>
+                </div>
+                <ul class="game-list">
+                    <li>
+                        <a class="game" href="./games/card/index.html" target="_blank" rel="noopener">
+                            <span class="game-thumb" aria-hidden="true"></span>
+                            <span>
+                                <span class="game-name">節日賀卡</span>
+                                <span class="game-desc">放煙火、貼貼紙，做一張會動的賀卡。</span>
+                                <span class="btn">開始玩<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h7v7M13 3 4 12"/></svg></span>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </section>
+        </div>
     </main>
+
+    <script>
+        // 參數列輪播：換一組常見的拍攝設定；系統要求減少動態時不輪播
+        (function () {
+            const presets = [
+                ['35mm', 'f/2.0', '1/250', 'ISO 200'],
+                ['85mm', 'f/1.4', '1/500', 'ISO 100'],
+                ['24mm', 'f/8', '1/125', 'ISO 100'],
+                ['50mm', 'f/1.8', '1/60', 'ISO 800'],
+                ['200mm', 'f/4', '1/1000', 'ISO 400']
+            ];
+            const cells = document.querySelectorAll('[data-readout]');
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+            let index = 0;
+
+            setInterval(function () {
+                if (reduceMotion.matches || document.hidden) return;
+                index = (index + 1) % presets.length;
+                cells.forEach(function (cell, i) {
+                    cell.textContent = presets[index][i];
+                });
+            }, 3000);
+        })();
+    </script>
 </body>
 </html>
-
-
-
-
-
-
